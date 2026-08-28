@@ -68,6 +68,10 @@ try {
     /*
      * ---------------------------------------------------------
      * Police station statistics
+     *
+     * IMPORTANT:
+     * Do NOT use "use" as SQL alias.
+     * USE is a MySQL reserved keyword.
      * ---------------------------------------------------------
      */
 
@@ -90,7 +94,7 @@ try {
                     END
                 ),
                 0
-            ) AS sale,
+            ) AS sale_count,
 
             COALESCE(
                 SUM(
@@ -101,9 +105,9 @@ try {
                     END
                 ),
                 0
-            ) AS use,
+            ) AS use_count,
 
-            COUNT(r.id) AS total
+            COUNT(r.id) AS total_count
 
         FROM police_stations ps
 
@@ -148,27 +152,28 @@ try {
             'division_slug' =>
                 (string) $row['division_slug'],
 
-            'sale' => (int) $row['sale'],
+            'sale' =>
+                (int) $row['sale_count'],
 
-            'use' => (int) $row['use'],
+            'use' =>
+                (int) $row['use_count'],
 
-            'total' => (int) $row['total']
+            'total' =>
+                (int) $row['total_count']
         ];
     }
 
 
     /*
      * ---------------------------------------------------------
-     * Final response
+     * Final JSON response
      * ---------------------------------------------------------
      */
 
     json_response([
-
         'ok' => true,
 
         'statistics' => [
-
             'total_reports' =>
                 (int) ($overall['total_reports'] ?? 0),
 
@@ -203,6 +208,7 @@ try {
 
     json_response([
         'ok' => false,
-        'message' => 'Statistics data load করা যায়নি।'
+        'message' =>
+            'Statistics data load করা যায়নি।'
     ], 500);
 }

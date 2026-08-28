@@ -247,149 +247,237 @@ function renderMarkers() {
    --------------------------------------------------------- */
 
 async function loadMapLocations() {
-  try {
-    console.log("[SafeMap] Loading locations...");
+  console.log("[SafeMap] Loading locations...");
 
-    const response = await fetch("api/locations.php", {
+  const response = await fetch(
+    `api/locations.php?_=${Date.now()}`,
+    {
       method: "GET",
       headers: {
         Accept: "application/json"
       },
       cache: "no-store"
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Locations API returned HTTP ${response.status}`
-      );
     }
+  );
 
-    const result = await response.json();
+  const text = await response.text();
 
-    if (!result.ok) {
-      throw new Error(
-        result.message || "Locations load failed."
-      );
-    }
+  console.log(
+    "[SafeMap] Locations HTTP:",
+    response.status
+  );
 
-    demoLocations.length = 0;
+  console.log(
+    "[SafeMap] Locations response:",
+    text
+  );
 
-    if (Array.isArray(result.locations)) {
-      demoLocations.push(
-        ...result.locations.map(location => ({
-          ...location,
-          lat: Number(location.lat),
-          lng: Number(location.lng),
-          reports: Number(location.reports || 0),
-          use_count: Number(location.use_count || 0),
-          sale_count: Number(location.sale_count || 0)
-        }))
-      );
-    }
-
-    console.log(
-      `[SafeMap] ${demoLocations.length} locations loaded.`
+  if (!response.ok) {
+    throw new Error(
+      `Locations API HTTP ${response.status}`
     );
-
-    renderMarkers();
-
-    return result;
-
-  } catch (error) {
-
-    console.error(
-      "[SafeMap] loadMapLocations error:",
-      error
-    );
-
-    throw error;
   }
+
+  let result;
+
+  try {
+    result = JSON.parse(text);
+  } catch (error) {
+    throw new Error(
+      "Locations API valid JSON return করছে না।"
+    );
+  }
+
+  if (!result?.ok) {
+    throw new Error(
+      result?.message ||
+      "Locations load failed."
+    );
+  }
+
+  demoLocations.length = 0;
+
+  if (Array.isArray(result.locations)) {
+
+    for (const location of result.locations) {
+
+      const lat =
+        Number(location.lat);
+
+      const lng =
+        Number(location.lng);
+
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng)
+      ) {
+        console.warn(
+          "[SafeMap] Invalid location skipped:",
+          location
+        );
+
+        continue;
+      }
+
+      demoLocations.push({
+        ...location,
+
+        lat,
+        lng,
+
+        reports:
+          Number(location.reports) || 0,
+
+        use_count:
+          Number(location.use_count) || 0,
+
+        sale_count:
+          Number(location.sale_count) || 0
+      });
+    }
+  }
+
+  console.log(
+    `[SafeMap] ${demoLocations.length} locations loaded.`
+  );
+
+  renderMarkers();
+
+  return result;
 }
+
 
 
 /* ---------------------------------------------------------
    Backend - Statistics
    --------------------------------------------------------- */
 
-async function loadBackendData() {
-  try {
-    console.log("[SafeMap] Loading statistics...");
 
-    const response = await fetch("api/statistics.php", {
+async function loadBackendData() {
+  console.log("[SafeMap] Loading statistics...");
+
+  const response = await fetch(
+    `api/statistics.php?_=${Date.now()}`,
+    {
       method: "GET",
       headers: {
         Accept: "application/json"
       },
       cache: "no-store"
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Statistics API returned HTTP ${response.status}`
-      );
     }
+  );
 
-    const result = await response.json();
+  const text = await response.text();
 
-    if (!result.ok) {
-      throw new Error(
-        result.message || "Statistics load failed."
-      );
-    }
+  console.log(
+    "[SafeMap] Statistics HTTP:",
+    response.status
+  );
 
-    /*
-     * Replace stationData with fresh API data.
-     */
-    stationData.length = 0;
+  console.log(
+    "[SafeMap] Statistics response:",
+    text
+  );
 
-    if (Array.isArray(result.stations)) {
-      stationData.push(
-        ...result.stations.map(item => ({
-          ...item,
-          sale: Number(item.sale || 0),
-          use: Number(item.use || 0),
-          total: Number(item.total || 0)
-        }))
-      );
-    }
-
-    /*
-     * Keep statistics globally available.
-     * This can also be used later for dashboard cards.
-     */
-    window.safeMapStatistics =
-      result.statistics || {
-        total_reports: 0,
-        use_reports: 0,
-        sale_reports: 0,
-        total_locations: 0,
-        use_locations: 0,
-        sale_locations: 0,
-        both_locations: 0
-      };
-
-    console.log(
-      "[SafeMap] Statistics:",
-      window.safeMapStatistics
+  if (!response.ok) {
+    throw new Error(
+      `Statistics API HTTP ${response.status}`
     );
-
-    renderStationTable();
-
-    updateStatisticsUI(
-      window.safeMapStatistics
-    );
-
-    return result;
-
-  } catch (error) {
-
-    console.error(
-      "[SafeMap] loadBackendData error:",
-      error
-    );
-
-    throw error;
   }
+
+  let result;
+
+  try {
+    result = JSON.parse(text);
+  } catch (error) {
+    throw new Error(
+      "Statistics API valid JSON return করছে না।"
+    );
+  }
+
+  if (!result?.ok) {
+    throw new Error(
+      result?.message ||
+      "Statistics load failed."
+    );
+  }
+
+  /*
+   * Station data
+   */
+
+  stationData.length = 0;
+
+  if (Array.isArray(result.stations)) {
+    stationData.push(
+      ...result.stations.map(item => ({
+        ...item,
+
+        sale:
+          Number(item.sale) || 0,
+
+        use:
+          Number(item.use) || 0,
+
+        total:
+          Number(item.total) || 0
+      }))
+    );
+  }
+
+  /*
+   * Overall statistics
+   */
+
+  window.safeMapStatistics = {
+    total_reports:
+      Number(
+        result.statistics?.total_reports
+      ) || 0,
+
+    use_reports:
+      Number(
+        result.statistics?.use_reports
+      ) || 0,
+
+    sale_reports:
+      Number(
+        result.statistics?.sale_reports
+      ) || 0,
+
+    total_locations:
+      Number(
+        result.statistics?.total_locations
+      ) || 0,
+
+    use_locations:
+      Number(
+        result.statistics?.use_locations
+      ) || 0,
+
+    sale_locations:
+      Number(
+        result.statistics?.sale_locations
+      ) || 0,
+
+    both_locations:
+      Number(
+        result.statistics?.both_locations
+      ) || 0
+  };
+
+  console.log(
+    "[SafeMap] Statistics loaded:",
+    window.safeMapStatistics
+  );
+
+  renderStationTable();
+
+  updateStatisticsUI(
+    window.safeMapStatistics
+  );
+
+  return result;
 }
 
 
@@ -1379,33 +1467,24 @@ if (divisionSelect) {
    Toast
    --------------------------------------------------------- */
 
-function showToast(
-  title,
-  message
-) {
+function showToast(title, message) {
 
   const toast =
-    document.getElementById(
-      "toast"
-    );
+    document.getElementById("toast");
 
   const toastTitle =
-    document.getElementById(
-      "toastTitle"
-    );
+    document.getElementById("toastTitle");
 
   const toastMessage =
-    document.getElementById(
-      "toastMessage"
-    );
+    document.getElementById("toastMessage");
 
   if (
     !toast ||
     !toastTitle ||
     !toastMessage
   ) {
-
     console.log(
+      "[SafeMap Toast]",
       title,
       message
     );
@@ -1414,29 +1493,36 @@ function showToast(
   }
 
   toastTitle.textContent =
-    title;
+    title || "সফল হয়েছে";
 
   toastMessage.textContent =
-    message;
+    message || "";
 
-  toast.classList.add(
-    "show"
-  );
+  /*
+   * IMPORTANT:
+   * CSS class is .toast-show
+   */
+  toast.classList.add("toast-show");
+
+  /*
+   * Remove old class if any
+   */
+  toast.classList.remove("show");
 
   clearTimeout(
     window.toastTimer
   );
 
   window.toastTimer =
-    setTimeout(
-      () => {
-        toast.classList.remove(
-          "show"
-        );
-      },
-      3500
-    );
+    setTimeout(() => {
+
+      toast.classList.remove(
+        "toast-show"
+      );
+
+    }, 3500);
 }
+
 
 
 /* ---------------------------------------------------------
@@ -1732,45 +1818,61 @@ document.addEventListener(
       "[SafeMap] Initializing..."
     );
 
+    initMap();
+
+    /*
+     * Load locations independently.
+     */
     try {
 
-      initMap();
-
-      /*
-       * Load both APIs.
-       *
-       * Promise.all means the page doesn't need
-       * to wait for one before starting the other.
-       */
-      await Promise.all([
-        loadBackendData(),
-        loadMapLocations()
-      ]);
-
-      renderStationTable();
-
-      console.log(
-        "[SafeMap] Initialization complete."
-      );
+      await loadMapLocations();
 
     } catch (error) {
 
       console.error(
-        "[SafeMap] Initialization failed:",
+        "[SafeMap] Locations initialization failed:",
         error
       );
 
-      /*
-       * Map can still work even if backend
-       * data failed.
-       */
-      renderMarkers();
-      renderStationTable();
-
       showToast(
-        "Data load করা যায়নি",
-        "Database থেকে data আনতে সমস্যা হয়েছে। Console/Network দেখুন।"
+        "লোকেশন data load করা যায়নি",
+        error.message ||
+        "Locations API check করুন।"
       );
     }
+
+
+    /*
+     * Load statistics independently.
+     */
+    try {
+
+      await loadBackendData();
+
+    } catch (error) {
+
+      console.error(
+        "[SafeMap] Statistics initialization failed:",
+        error
+      );
+
+      showToast(
+        "Statistics load করা যায়নি",
+        error.message ||
+        "Statistics API check করুন।"
+      );
+    }
+
+
+    /*
+     * Render whatever data was successfully loaded.
+     */
+    renderMarkers();
+
+    renderStationTable();
+
+    console.log(
+      "[SafeMap] Initialization finished."
+    );
   }
 );

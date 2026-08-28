@@ -6,6 +6,7 @@ require_once __DIR__ . '/_common.php';
 request_method('GET');
 
 try {
+
     $pdo = db();
 
     $sql = "
@@ -18,6 +19,7 @@ try {
             l.report_count,
             l.use_count,
             l.sale_count,
+            l.updated_at,
 
             ps.id AS police_station_id,
             ps.name AS police_station,
@@ -40,7 +42,13 @@ try {
         LEFT JOIN divisions dv
             ON dv.id = d.division_id
 
-        ORDER BY l.updated_at DESC, l.id DESC
+        WHERE
+            l.latitude IS NOT NULL
+            AND l.longitude IS NOT NULL
+
+        ORDER BY
+            l.updated_at DESC,
+            l.id DESC
     ";
 
     $stmt = $pdo->query($sql);
@@ -48,38 +56,74 @@ try {
     $locations = [];
 
     while ($row = $stmt->fetch()) {
+
+        $lat = (float) $row['latitude'];
+        $lng = (float) $row['longitude'];
+
+        /*
+         * Never send invalid coordinates to Leaflet.
+         */
+        if (
+            !is_finite($lat) ||
+            !is_finite($lng) ||
+            $lat < -90 ||
+            $lat > 90 ||
+            $lng < -180 ||
+            $lng > 180
+        ) {
+            continue;
+        }
+
         $locations[] = [
-            'id' => (int) $row['id'],
 
-            'lat' => (float) $row['latitude'],
-            'lng' => (float) $row['longitude'],
+            'id' =>
+                (int) $row['id'],
 
-            'title' => (string) $row['title'],
-            'type' => (string) $row['type'],
+            'lat' =>
+                $lat,
 
-            'reports' => (int) $row['report_count'],
-            'use_count' => (int) $row['use_count'],
-            'sale_count' => (int) $row['sale_count'],
+            'lng' =>
+                $lng,
 
-            'station' => $row['police_station']
-                ? (string) $row['police_station']
-                : 'থানা নির্ধারণ করা হয়নি',
+            'title' =>
+                (string) $row['title'],
 
-            'district' => $row['district']
-                ? (string) $row['district']
-                : null,
+            'type' =>
+                (string) $row['type'],
 
-            'division' => $row['division']
-                ? (string) $row['division']
-                : null,
+            'reports' =>
+                (int) $row['report_count'],
 
-            'division_slug' => $row['division_slug']
-                ? (string) $row['division_slug']
-                : null,
+            'use_count' =>
+                (int) $row['use_count'],
 
-            'police_station_id' => $row['police_station_id'] !== null
-                ? (int) $row['police_station_id']
-                : null
+            'sale_count' =>
+                (int) $row['sale_count'],
+
+            'station' =>
+                $row['police_station'] !== null
+                    ? (string) $row['police_station']
+                    : 'থানা নির্ধারণ করা হয়নি',
+
+            'district' =>
+                $row['district'] !== null
+                    ? (string) $row['district']
+                    : null,
+
+            'division' =>
+                $row['division'] !== null
+                    ? (string) $row['division']
+                    : null,
+
+            'division_slug' =>
+                $row['division_slug'] !== null
+                    ? (string) $row['division_slug']
+                    : null,
+
+            'police_station_id' =>
+                $row['police_station_id'] !== null
+                    ? (int) $row['police_station_id']
+                    : null
         ];
     }
 
@@ -96,8 +140,25 @@ try {
         $e->getMessage()
     );
 
+    /*
+     * Local development-এ browser console-এ
+     * আসল DB error দেখতে সুবিধা হবে।
+     *
+     * Hosting-এ চাইলে শুধু generic message রাখতে পারো।
+     */
+    $message = 'লোকেশন data load করা যায়নি।';
+
+    if (
+        defined('APP_ENV') &&
+        APP_ENV === 'development'
+    ) {
+        $message =
+            'Locations API error: ' .
+            $e->getMessage();
+    }
+
     json_response([
         'ok' => false,
-        'message' => 'লোকেশন data load করা যায়নি।'
+        'message' => $message
     ], 500);
 }

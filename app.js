@@ -164,12 +164,34 @@ function renderMarkers() {
 
   mapMarkers = [];
 
-  const filtered = demoLocations.filter(location => {
-    return (
-      currentFilter === "all" ||
-      location.type === currentFilter
-    );
-  });
+  const filtered =
+    demoLocations.filter(location => {
+
+        if (currentFilter === "all") {
+            return true;
+        }
+
+        if (currentFilter === "sale") {
+
+            return (
+                location.type === "sale" ||
+                location.type === "both" ||
+                Number(location.sale_count) > 0
+            );
+        }
+
+        if (currentFilter === "use") {
+
+            return (
+                location.type === "use" ||
+                location.type === "both" ||
+                Number(location.use_count) > 0
+            );
+        }
+
+        return true;
+    });
+
 
   filtered.forEach(location => {
     const marker = L.marker(
@@ -429,41 +451,48 @@ async function loadBackendData() {
    * Overall statistics
    */
 
+  
   window.safeMapStatistics = {
-    total_reports:
-      Number(
-        result.statistics?.total_reports
-      ) || 0,
 
-    use_reports:
-      Number(
-        result.statistics?.use_reports
-      ) || 0,
+      total_reports:
+          Number(
+              result.statistics?.total_reports
+          ) || 0,
 
-    sale_reports:
-      Number(
-        result.statistics?.sale_reports
-      ) || 0,
+      use_reports:
+          Number(
+              result.statistics?.use_reports
+          ) || 0,
 
-    total_locations:
-      Number(
-        result.statistics?.total_locations
-      ) || 0,
+      sale_reports:
+          Number(
+              result.statistics?.sale_reports
+          ) || 0,
 
-    use_locations:
-      Number(
-        result.statistics?.use_locations
-      ) || 0,
+      total_locations:
+          Number(
+              result.statistics?.total_locations
+          ) || 0,
 
-    sale_locations:
-      Number(
-        result.statistics?.sale_locations
-      ) || 0,
+      use_locations:
+          Number(
+              result.statistics?.use_locations
+          ) || 0,
 
-    both_locations:
-      Number(
-        result.statistics?.both_locations
-      ) || 0
+      sale_locations:
+          Number(
+              result.statistics?.sale_locations
+          ) || 0,
+
+      both_locations:
+          Number(
+              result.statistics?.both_locations
+          ) || 0,
+
+      total_stations:
+          Number(
+              result.statistics?.total_stations
+          ) || 0
   };
 
   console.log(
@@ -488,79 +517,101 @@ async function loadBackendData() {
    It does NOT require these elements to exist.
    --------------------------------------------------------- */
 
-function updateStatisticsUI(stats) {
 
-    const totalLocations =
-        document.getElementById("totalLocations");
+  function updateStatisticsUI(stats) {
 
-    const saleLocations =
-        document.getElementById("saleLocations");
+      const totalLocations =
+          document.getElementById(
+              "totalLocations"
+          );
 
-    const useLocations =
-        document.getElementById("useLocations");
+      const saleLocations =
+          document.getElementById(
+              "saleLocations"
+          );
 
-    const totalReports =
-        document.getElementById("totalReports");
+      const useLocations =
+          document.getElementById(
+              "useLocations"
+          );
 
-    const heroReportedLocations =
-        document.getElementById(
-            "heroReportedLocations"
-        );
+      const totalReports =
+          document.getElementById(
+              "totalReports"
+          );
 
-    const heroPoliceStations =
-        document.getElementById(
-            "heroPoliceStations"
-        );
+      const heroReportedLocations =
+          document.getElementById(
+              "heroReportedLocations"
+          );
 
-
-    if (totalLocations) {
-        totalLocations.textContent =
-            Number(
-                stats.total_locations || 0
-            ).toLocaleString("en-US");
-    }
-
-
-    if (saleLocations) {
-        saleLocations.textContent =
-            Number(
-                stats.sale_locations || 0
-            ).toLocaleString("en-US");
-    }
+      const heroPoliceStations =
+          document.getElementById(
+              "heroPoliceStations"
+          );
 
 
-    if (useLocations) {
-        useLocations.textContent =
-            Number(
-                stats.use_locations || 0
-            ).toLocaleString("en-US");
-    }
+      /*
+      * Statistics section
+      */
+
+      if (totalLocations) {
+
+          totalLocations.textContent =
+              Number(
+                  stats.total_locations || 0
+              ).toLocaleString("bn-BD");
+      }
 
 
-    if (totalReports) {
-        totalReports.textContent =
-            Number(
-                stats.total_reports || 0
-            ).toLocaleString("en-US");
-    }
+      if (saleLocations) {
+
+          saleLocations.textContent =
+              Number(
+                  stats.sale_locations || 0
+              ).toLocaleString("bn-BD");
+      }
 
 
-    if (heroReportedLocations) {
-        heroReportedLocations.textContent =
-            Number(
-                stats.total_locations || 0
-            ).toLocaleString("en-US");
-    }
+      if (useLocations) {
+
+          useLocations.textContent =
+              Number(
+                  stats.use_locations || 0
+              ).toLocaleString("bn-BD");
+      }
 
 
-    if (heroPoliceStations) {
-        heroPoliceStations.textContent =
-            Number(
-                stats.total_stations || 0
-            ).toLocaleString("en-US");
-    }
-}
+      if (totalReports) {
 
+          totalReports.textContent =
+              Number(
+                  stats.total_reports || 0
+              ).toLocaleString("bn-BD");
+      }
+
+
+      /*
+      * Hero
+      */
+
+      if (heroReportedLocations) {
+
+          heroReportedLocations.textContent =
+              Number(
+                  stats.total_locations || 0
+              ).toLocaleString("bn-BD");
+      }
+
+
+      if (heroPoliceStations) {
+
+          heroPoliceStations.textContent =
+              Number(
+                  stats.total_stations || 0
+              ).toLocaleString("bn-BD");
+      }
+  }
 
 function setFirstMatchingText(selectors, value) {
   for (const selector of selectors) {
@@ -1041,29 +1092,40 @@ function clearImagePreview() {
    Filters
    --------------------------------------------------------- */
 
-document.querySelectorAll(
-  ".filter-btn"
-).forEach(button => {
+document
+    .querySelectorAll(".filter-btn")
+    .forEach(button => {
 
-  button.addEventListener(
-    "click",
-    () => {
+        button.addEventListener(
+            "click",
+            function() {
 
-      document.querySelectorAll(
-        ".filter-btn"
-      ).forEach(btn => {
-        btn.classList.remove("active");
-      });
+                document
+                    .querySelectorAll(
+                        ".filter-btn"
+                    )
+                    .forEach(btn => {
 
-      button.classList.add("active");
+                        btn.classList.remove(
+                            "active"
+                        );
+                    });
 
-      currentFilter =
-        button.dataset.filter || "all";
 
-      renderMarkers();
-    }
-  );
-});
+                this.classList.add(
+                    "active"
+                );
+
+
+                currentFilter =
+                    this.dataset.filter ||
+                    "all";
+
+
+                renderMarkers();
+            }
+        );
+    });
 
 
 /* ---------------------------------------------------------
@@ -1834,69 +1896,337 @@ function closeLocationPicker() {
    Start
    --------------------------------------------------------- */
 
-document.addEventListener(
-  "DOMContentLoaded",
-  async () => {
+  document.addEventListener(
+      "DOMContentLoaded",
+      async function() {
 
-    console.log(
-      "[SafeMap] Initializing..."
-    );
+          console.log(
+              "[SafeMap] Initializing..."
+          );
 
-    initMap();
 
-    /*
-     * Load locations independently.
-     */
-    try {
+          /*
+          * Main map
+          */
+          initMap();
 
-      await loadMapLocations();
 
-    } catch (error) {
+          /*
+          * Hero map
+          */
+          initHeroMap();
 
-      console.error(
-        "[SafeMap] Locations initialization failed:",
-        error
-      );
 
-      showToast(
-        "লোকেশন data load করা যায়নি",
-        error.message ||
-        "Locations API check করুন।"
-      );
+          /*
+          * Locations
+          */
+          try {
+
+              await loadMapLocations();
+
+          } catch (error) {
+
+              console.error(
+                  "[SafeMap] Locations load failed:",
+                  error
+              );
+
+              showToast(
+                  "লোকেশন data load করা যায়নি",
+                  error.message ||
+                  "Locations API check করুন।"
+              );
+          }
+
+
+          /*
+          * Statistics
+          */
+          try {
+
+              await loadBackendData();
+
+          } catch (error) {
+
+              console.error(
+                  "[SafeMap] Statistics load failed:",
+                  error
+              );
+
+              showToast(
+                  "Statistics load করা যায়নি",
+                  error.message ||
+                  "Statistics API check করুন।"
+              );
+          }
+
+
+          /*
+          * Final render
+          */
+          renderMarkers();
+
+          renderHeroMarkers();
+
+
+          /*
+          * Hero current-location button
+          */
+          const locateMeBtn =
+              document.getElementById(
+                  "locateMeBtn"
+              );
+
+          if (locateMeBtn) {
+
+              locateMeBtn.addEventListener(
+                  "click",
+                  locateUserFromHero
+              );
+          }
+
+
+          console.log(
+              "[SafeMap] Initialization complete."
+          );
+      }
+  );
+
+
+/* ---------------------------------------------------------
+   Hero: My Location
+   --------------------------------------------------------- */
+
+function locateUserFromHero() {
+
+    if (!navigator.geolocation) {
+
+        showToast(
+            "লোকেশন পাওয়া যাচ্ছে না",
+            "আপনার browser geolocation support করে না।"
+        );
+
+        return;
     }
 
 
-    /*
-     * Load statistics independently.
-     */
-    try {
+    const button =
+        document.getElementById(
+            "locateMeBtn"
+        );
 
-      await loadBackendData();
 
-    } catch (error) {
+    if (button) {
 
-      console.error(
-        "[SafeMap] Statistics initialization failed:",
-        error
-      );
+        button.disabled = true;
 
-      showToast(
-        "Statistics load করা যায়নি",
-        error.message ||
-        "Statistics API check করুন।"
-      );
+        button.innerHTML =
+            "◎ লোকেশন নেওয়া হচ্ছে...";
     }
 
 
-    /*
-     * Render whatever data was successfully loaded.
-     */
-    renderMarkers();
+    navigator.geolocation.getCurrentPosition(
 
-    renderStationTable();
+        function(position) {
 
-    console.log(
-      "[SafeMap] Initialization finished."
+            const lat =
+                position.coords.latitude;
+
+            const lng =
+                position.coords.longitude;
+
+
+            /*
+             * Make sure main map exists.
+             */
+            if (!map) {
+
+                if (button) {
+
+                    button.disabled = false;
+
+                    button.innerHTML =
+                        "◎ আমার অবস্থান";
+                }
+
+                showToast(
+                    "মানচিত্র প্রস্তুত নয়",
+                    "কিছুক্ষণ পরে আবার চেষ্টা করুন।"
+                );
+
+                return;
+            }
+
+
+            /*
+             * Center main map.
+             */
+            map.setView(
+                [lat, lng],
+                15,
+                {
+                    animate: true
+                }
+            );
+
+
+            /*
+             * Remove old user marker.
+             */
+            if (userLocationMarker) {
+
+                userLocationMarker.remove();
+            }
+
+
+            /*
+             * Create current location marker.
+             */
+            userLocationMarker =
+                L.circleMarker(
+                    [lat, lng],
+                    {
+                        radius: 9,
+
+                        color: "#ffffff",
+
+                        weight: 3,
+
+                        fillColor:
+                            "#5b46e8",
+
+                        fillOpacity: 1
+                    }
+                ).addTo(map);
+
+
+            userLocationMarker.bindPopup(
+                "আপনার বর্তমান অবস্থান"
+            );
+
+
+            userLocationMarker.openPopup();
+
+
+            /*
+             * Scroll to main map.
+             */
+            const mapSection =
+                document.getElementById(
+                    "map-section"
+                );
+
+            if (mapSection) {
+
+                mapSection.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start"
+                });
+            }
+
+
+            if (button) {
+
+                button.disabled = false;
+
+                button.innerHTML =
+                    "✓ অবস্থান পাওয়া গেছে";
+            }
+
+
+            showToast(
+                "লোকেশন পাওয়া গেছে",
+                "আপনার বর্তমান অবস্থান মানচিত্রে দেখানো হয়েছে।"
+            );
+
+
+            setTimeout(() => {
+
+                if (button) {
+
+                    button.innerHTML =
+                        "◎ আমার অবস্থান";
+                }
+
+            }, 2500);
+        },
+
+
+        function(error) {
+
+            console.error(
+                "[SafeMap] Geolocation error:",
+                error
+            );
+
+
+            if (button) {
+
+                button.disabled = false;
+
+                button.innerHTML =
+                    "◎ আমার অবস্থান";
+            }
+
+
+            let message =
+                "লোকেশন পাওয়া যায়নি।";
+
+
+            if (
+                error.code ===
+                error.PERMISSION_DENIED
+            ) {
+
+                message =
+                    "Browser location permission দিন।";
+            }
+
+            else if (
+                error.code ===
+                error.POSITION_UNAVAILABLE
+            ) {
+
+                message =
+                    "বর্তমান অবস্থান পাওয়া যাচ্ছে না।";
+            }
+
+            else if (
+                error.code ===
+                error.TIMEOUT
+            ) {
+
+                message =
+                    "লোকেশন পেতে সময় শেষ হয়ে গেছে।";
+            }
+
+
+            showToast(
+                "লোকেশন পাওয়া যায়নি",
+                message
+            );
+        },
+
+
+        {
+            enableHighAccuracy: true,
+
+            timeout: 15000,
+
+            maximumAge: 30000
+        }
     );
-  }
-);
+}
+
+const locateMeBtn =
+    document.getElementById(
+        "locateMeBtn"
+    );
+
+if (locateMeBtn) {
+
+    locateMeBtn.addEventListener(
+        "click",
+        locateUserFromHero
+    );
+}

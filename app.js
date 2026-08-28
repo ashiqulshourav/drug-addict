@@ -490,51 +490,75 @@ async function loadBackendData() {
 
 function updateStatisticsUI(stats) {
 
-  const selectors = {
-    totalReports: [
-      "#totalReports",
-      "#totalReportCount",
-      "[data-stat='total-reports']"
-    ],
+    const totalLocations =
+        document.getElementById("totalLocations");
 
-    useReports: [
-      "#useReports",
-      "#useReportCount",
-      "[data-stat='use-reports']"
-    ],
+    const saleLocations =
+        document.getElementById("saleLocations");
 
-    saleReports: [
-      "#saleReports",
-      "#saleReportCount",
-      "[data-stat='sale-reports']"
-    ],
+    const useLocations =
+        document.getElementById("useLocations");
 
-    totalLocations: [
-      "#totalLocations",
-      "#locationCount",
-      "[data-stat='total-locations']"
-    ]
-  };
+    const totalReports =
+        document.getElementById("totalReports");
 
-  setFirstMatchingText(
-    selectors.totalReports,
-    stats.total_reports
-  );
+    const heroReportedLocations =
+        document.getElementById(
+            "heroReportedLocations"
+        );
 
-  setFirstMatchingText(
-    selectors.useReports,
-    stats.use_reports
-  );
+    const heroPoliceStations =
+        document.getElementById(
+            "heroPoliceStations"
+        );
 
-  setFirstMatchingText(
-    selectors.saleReports,
-    stats.sale_reports
-  );
 
-  setFirstMatchingText(
-    selectors.totalLocations,
-    stats.total_locations
-  );
+    if (totalLocations) {
+        totalLocations.textContent =
+            Number(
+                stats.total_locations || 0
+            ).toLocaleString("en-US");
+    }
+
+
+    if (saleLocations) {
+        saleLocations.textContent =
+            Number(
+                stats.sale_locations || 0
+            ).toLocaleString("en-US");
+    }
+
+
+    if (useLocations) {
+        useLocations.textContent =
+            Number(
+                stats.use_locations || 0
+            ).toLocaleString("en-US");
+    }
+
+
+    if (totalReports) {
+        totalReports.textContent =
+            Number(
+                stats.total_reports || 0
+            ).toLocaleString("en-US");
+    }
+
+
+    if (heroReportedLocations) {
+        heroReportedLocations.textContent =
+            Number(
+                stats.total_locations || 0
+            ).toLocaleString("en-US");
+    }
+
+
+    if (heroPoliceStations) {
+        heroPoliceStations.textContent =
+            Number(
+                stats.total_stations || 0
+            ).toLocaleString("en-US");
+    }
 }
 
 

@@ -41,23 +41,23 @@ try {
      */
 
     $stmt = $pdo->query("
-        SELECT
-            COUNT(*) AS total_locations,
+    SELECT
+        COUNT(*) AS total_locations,
 
-            COALESCE(
-                SUM(type = 'use'),
-                0
-            ) AS use_locations,
+        COALESCE(
+            SUM(sale_count > 0),
+            0
+        ) AS sale_locations,
 
-            COALESCE(
-                SUM(type = 'sale'),
-                0
-            ) AS sale_locations,
+        COALESCE(
+            SUM(use_count > 0),
+            0
+        ) AS use_locations,
 
-            COALESCE(
-                SUM(type = 'both'),
-                0
-            ) AS both_locations
+        COALESCE(
+            SUM(type = 'both'),
+            0
+        ) AS both_locations
 
         FROM locations
     ");
@@ -163,6 +163,14 @@ try {
         ];
     }
 
+    $totalStationsStmt = $pdo->query("
+        SELECT COUNT(*) 
+        FROM police_stations
+    ");
+
+    $totalStations =
+        (int) $totalStationsStmt->fetchColumn();
+
 
     /*
      * ---------------------------------------------------------
@@ -171,33 +179,37 @@ try {
      */
 
     json_response([
-        'ok' => true,
+    'ok' => true,
 
-        'statistics' => [
-            'total_reports' =>
-                (int) ($overall['total_reports'] ?? 0),
+    'statistics' => [
 
-            'use_reports' =>
-                (int) ($overall['use_reports'] ?? 0),
+        'total_reports' =>
+            (int) ($overall['total_reports'] ?? 0),
 
-            'sale_reports' =>
-                (int) ($overall['sale_reports'] ?? 0),
+        'use_reports' =>
+            (int) ($overall['use_reports'] ?? 0),
 
-            'total_locations' =>
-                (int) ($locationStats['total_locations'] ?? 0),
+        'sale_reports' =>
+            (int) ($overall['sale_reports'] ?? 0),
 
-            'use_locations' =>
-                (int) ($locationStats['use_locations'] ?? 0),
+        'total_locations' =>
+            (int) ($locationStats['total_locations'] ?? 0),
 
-            'sale_locations' =>
-                (int) ($locationStats['sale_locations'] ?? 0),
+        'use_locations' =>
+            (int) ($locationStats['use_locations'] ?? 0),
 
-            'both_locations' =>
-                (int) ($locationStats['both_locations'] ?? 0)
-        ],
+        'sale_locations' =>
+            (int) ($locationStats['sale_locations'] ?? 0),
 
-        'stations' => $stations
-    ]);
+        'both_locations' =>
+            (int) ($locationStats['both_locations'] ?? 0),
+
+        'total_stations' =>
+            $totalStations
+    ],
+
+    'stations' => $stations
+]);
 
 } catch (Throwable $e) {
 

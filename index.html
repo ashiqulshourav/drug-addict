@@ -78,6 +78,18 @@
         visibility: visible !important;
         transform: none !important;
       }
+      .filter-btn {
+        transition:
+          background-color 0.2s ease,
+          color 0.2s ease,
+          box-shadow 0.2s ease;
+      }
+
+      .filter-btn.active {
+        background: #5b46e8 !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 7px rgba(91, 70, 232, 0.22);
+      }
     </style>
   </head>
 
@@ -184,6 +196,7 @@
           </div>
 
           <div
+            id="heroMap"
             class="relative h-[260px] overflow-hidden bg-slate-200 md:h-[330px]"
           >
             <div
@@ -233,12 +246,18 @@
 
           <div class="grid grid-cols-2 px-5 py-4">
             <div>
-              <strong class="block text-[22px]">1,248</strong>
+              <strong id="heroReportedLocations" class="block text-[22px]"
+                >0</strong
+              >
               <span class="text-[11px] text-slate-500">Reported locations</span>
             </div>
             <div class="border-l border-slate-200 pl-5">
-              <strong class="block text-[22px]">64</strong>
-              <span class="text-[11px] text-slate-500">Police stations</span>
+              <strong id="heroPoliceStations" class="block text-[22px]"
+                >0</strong
+              >
+              <span class="text-[11px] text-slate-500"
+                >Reported Police stations</span
+              >
             </div>
           </div>
         </div>
@@ -960,6 +979,6 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin=""
     ></script>
-    <script src="app.js?v=1.0.1"></script>
+    <script src="app.js?v=1.0.2"></script>
   </body>
 </html>

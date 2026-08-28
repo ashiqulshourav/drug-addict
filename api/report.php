@@ -237,3 +237,102 @@ try {
     error_log('SafeMap report error: ' . $e->getMessage());
     json_response(['ok' => false, 'message' => 'রিপোর্ট save করা যায়নি।'], 500);
 }
+
+
+$stationStmt = $pdo->prepare("
+    SELECT
+        id,
+        name,
+        latitude,
+        longitude
+    FROM police_stations
+    WHERE latitude IS NOT NULL
+      AND longitude IS NOT NULL
+      AND (
+        6371000 * 2 * ASIN(
+            SQRT(
+                POWER(
+                    SIN(
+                        RADIANS(latitude - ?) / 2
+                    ),
+                    2
+                )
+                +
+                COS(RADIANS(?))
+                *
+                COS(RADIANS(latitude))
+                *
+                POWER(
+                    SIN(
+                        RADIANS(longitude - ?) / 2
+                    ),
+                    2
+                )
+            )
+        )
+    ) <= 10000
+    ORDER BY (
+        6371000 * 2 * ASIN(
+            SQRT(
+                POWER(
+                    SIN(
+                        RADIANS(latitude - ?) / 2
+                    ),
+                    2
+                )
+                +
+                COS(RADIANS(?))
+                *
+                COS(RADIANS(latitude))
+                *
+                POWER(
+                    SIN(
+                        RADIANS(longitude - ?) / 2
+                    ),
+                    2
+                )
+            )
+        )
+    )
+    LIMIT 1
+");
+
+$stationStmt->execute([
+    $lat,
+    $lat,
+    $lng,
+
+    $lat,
+    $lat,
+    $lng
+]);
+
+$station = $stationStmt->fetch();
+
+$policeStationId = $station ? (int) $station['id'] : null;
+
+
+$insert = $pdo->prepare(
+    "INSERT INTO locations
+    (
+        latitude,
+        longitude,
+        title,
+        type,
+        police_station_id,
+        report_count,
+        use_count,
+        sale_count
+    )
+    VALUES (?, ?, ?, ?, ?, 1, ?, ?)"
+);
+
+$insert->execute([
+    $lat,
+    $lng,
+    $title,
+    $type,
+    $policeStationId,
+    $useCount,
+    $saleCount
+]);

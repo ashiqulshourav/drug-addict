@@ -17,12 +17,22 @@ try {
     $stmt = $pdo->query("
         SELECT
             COUNT(*) AS total_reports,
-            SUM(report_type = 'use') AS use_reports,
-            SUM(report_type = 'sale') AS sale_reports
+
+            COALESCE(
+                SUM(report_type = 'use'),
+                0
+            ) AS use_reports,
+
+            COALESCE(
+                SUM(report_type = 'sale'),
+                0
+            ) AS sale_reports
+
         FROM reports
     ");
 
     $overall = $stmt->fetch() ?: [];
+
 
     /*
      * ---------------------------------------------------------
@@ -33,23 +43,31 @@ try {
     $stmt = $pdo->query("
         SELECT
             COUNT(*) AS total_locations,
-            SUM(type = 'use') AS use_locations,
-            SUM(type = 'sale') AS sale_locations,
-            SUM(type = 'both') AS both_locations
+
+            COALESCE(
+                SUM(type = 'use'),
+                0
+            ) AS use_locations,
+
+            COALESCE(
+                SUM(type = 'sale'),
+                0
+            ) AS sale_locations,
+
+            COALESCE(
+                SUM(type = 'both'),
+                0
+            ) AS both_locations
+
         FROM locations
     ");
 
     $locationStats = $stmt->fetch() ?: [];
 
+
     /*
      * ---------------------------------------------------------
      * Police station statistics
-     *
-     * Important:
-     *
-     * Some locations may not have a police_station_id yet.
-     * We still return every police station so the frontend table
-     * can show 0 for stations with no reports.
      * ---------------------------------------------------------
      */
 
@@ -57,21 +75,35 @@ try {
         SELECT
             ps.id,
             ps.name AS station,
+
             d.name AS district,
+
             dv.name AS division,
             dv.slug AS division_slug,
 
-            COALESCE(SUM(CASE
-                WHEN r.report_type = 'sale' THEN 1
-                ELSE 0
-            END), 0) AS sale,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN r.report_type = 'sale'
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS sale,
 
-            COALESCE(SUM(CASE
-                WHEN r.report_type = 'use' THEN 1
-                ELSE 0
-            END), 0) AS use,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN r.report_type = 'use'
+                        THEN 1
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS use,
 
-            COALESCE(COUNT(r.id), 0) AS total
+            COUNT(r.id) AS total
 
         FROM police_stations ps
 
@@ -103,37 +135,60 @@ try {
     $stations = [];
 
     while ($row = $stmt->fetch()) {
-        $stations[] = [
-            'id' => (int)$row['id'],
-            'station' => (string)$row['station'],
-            'district' => (string)$row['district'],
-            'division' => (string)$row['division'],
-            'division_slug' => (string)$row['division_slug'],
 
-            'sale' => (int)$row['sale'],
-            'use' => (int)$row['use'],
-            'total' => (int)$row['total']
+        $stations[] = [
+            'id' => (int) $row['id'],
+
+            'station' => (string) $row['station'],
+
+            'district' => (string) $row['district'],
+
+            'division' => (string) $row['division'],
+
+            'division_slug' =>
+                (string) $row['division_slug'],
+
+            'sale' => (int) $row['sale'],
+
+            'use' => (int) $row['use'],
+
+            'total' => (int) $row['total']
         ];
     }
 
+
     /*
      * ---------------------------------------------------------
-     * Response
+     * Final response
      * ---------------------------------------------------------
      */
 
     json_response([
+
         'ok' => true,
 
         'statistics' => [
-            'total_reports' => (int)($overall['total_reports'] ?? 0),
-            'use_reports' => (int)($overall['use_reports'] ?? 0),
-            'sale_reports' => (int)($overall['sale_reports'] ?? 0),
 
-            'total_locations' => (int)($locationStats['total_locations'] ?? 0),
-            'use_locations' => (int)($locationStats['use_locations'] ?? 0),
-            'sale_locations' => (int)($locationStats['sale_locations'] ?? 0),
-            'both_locations' => (int)($locationStats['both_locations'] ?? 0)
+            'total_reports' =>
+                (int) ($overall['total_reports'] ?? 0),
+
+            'use_reports' =>
+                (int) ($overall['use_reports'] ?? 0),
+
+            'sale_reports' =>
+                (int) ($overall['sale_reports'] ?? 0),
+
+            'total_locations' =>
+                (int) ($locationStats['total_locations'] ?? 0),
+
+            'use_locations' =>
+                (int) ($locationStats['use_locations'] ?? 0),
+
+            'sale_locations' =>
+                (int) ($locationStats['sale_locations'] ?? 0),
+
+            'both_locations' =>
+                (int) ($locationStats['both_locations'] ?? 0)
         ],
 
         'stations' => $stations
@@ -141,7 +196,10 @@ try {
 
 } catch (Throwable $e) {
 
-    error_log('SafeMap statistics error: ' . $e->getMessage());
+    error_log(
+        'SafeMap statistics error: ' .
+        $e->getMessage()
+    );
 
     json_response([
         'ok' => false,

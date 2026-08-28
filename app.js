@@ -1099,10 +1099,10 @@ if (reportForm) {
          */
         try {
 
-          await Promise.all([
-            loadBackendData(),
-            loadMapLocations()
-          ]);
+          await loadBackendData();
+          await loadMapLocations();
+
+          console.log( "[SafeMap] Backend data refreshed after report save." );
 
         } catch (reloadError) {
 

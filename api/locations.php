@@ -8,17 +8,6 @@ request_method('GET');
 try {
     $pdo = db();
 
-    /*
-     * We return one row per merged location.
-     *
-     * The frontend expects:
-     * lat
-     * lng
-     * title
-     * type
-     * station
-     * reports
-     */
     $sql = "
         SELECT
             l.id,
@@ -55,42 +44,41 @@ try {
     ";
 
     $stmt = $pdo->query($sql);
-    $rows = $stmt->fetchAll();
 
     $locations = [];
 
-    foreach ($rows as $row) {
+    while ($row = $stmt->fetch()) {
         $locations[] = [
-            'id' => (int)$row['id'],
+            'id' => (int) $row['id'],
 
-            'lat' => (float)$row['latitude'],
-            'lng' => (float)$row['longitude'],
+            'lat' => (float) $row['latitude'],
+            'lng' => (float) $row['longitude'],
 
-            'title' => (string)$row['title'],
-            'type' => (string)$row['type'],
+            'title' => (string) $row['title'],
+            'type' => (string) $row['type'],
 
-            'reports' => (int)$row['report_count'],
-            'use_count' => (int)$row['use_count'],
-            'sale_count' => (int)$row['sale_count'],
+            'reports' => (int) $row['report_count'],
+            'use_count' => (int) $row['use_count'],
+            'sale_count' => (int) $row['sale_count'],
 
             'station' => $row['police_station']
-                ? (string)$row['police_station']
+                ? (string) $row['police_station']
                 : 'থানা নির্ধারণ করা হয়নি',
 
             'district' => $row['district']
-                ? (string)$row['district']
+                ? (string) $row['district']
                 : null,
 
             'division' => $row['division']
-                ? (string)$row['division']
+                ? (string) $row['division']
                 : null,
 
             'division_slug' => $row['division_slug']
-                ? (string)$row['division_slug']
+                ? (string) $row['division_slug']
                 : null,
 
-            'police_station_id' => $row['police_station_id']
-                ? (int)$row['police_station_id']
+            'police_station_id' => $row['police_station_id'] !== null
+                ? (int) $row['police_station_id']
                 : null
         ];
     }
@@ -103,7 +91,10 @@ try {
 
 } catch (Throwable $e) {
 
-    error_log('SafeMap locations error: ' . $e->getMessage());
+    error_log(
+        'SafeMap locations error: ' .
+        $e->getMessage()
+    );
 
     json_response([
         'ok' => false,

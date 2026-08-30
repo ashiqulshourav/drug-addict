@@ -1914,7 +1914,7 @@ function closeLocationPicker() {
           /*
           * Hero map
           */
-          initHeroMap();
+          // initHeroMap();
 
 
           /*
@@ -1966,7 +1966,7 @@ function closeLocationPicker() {
           */
           renderMarkers();
 
-          renderHeroMarkers();
+          // renderHeroMarkers();
 
 
           /*
@@ -1977,13 +1977,13 @@ function closeLocationPicker() {
                   "locateMeBtn"
               );
 
-          if (locateMeBtn) {
+          // if (locateMeBtn) {
 
-              locateMeBtn.addEventListener(
-                  "click",
-                  locateUserFromHero
-              );
-          }
+          //     locateMeBtn.addEventListener(
+          //         "click",
+          //         locateUserFromHero
+          //     );
+          // }
 
 
           console.log(
@@ -1991,242 +1991,3 @@ function closeLocationPicker() {
           );
       }
   );
-
-
-/* ---------------------------------------------------------
-   Hero: My Location
-   --------------------------------------------------------- */
-
-function locateUserFromHero() {
-
-    if (!navigator.geolocation) {
-
-        showToast(
-            "লোকেশন পাওয়া যাচ্ছে না",
-            "আপনার browser geolocation support করে না।"
-        );
-
-        return;
-    }
-
-
-    const button =
-        document.getElementById(
-            "locateMeBtn"
-        );
-
-
-    if (button) {
-
-        button.disabled = true;
-
-        button.innerHTML =
-            "◎ লোকেশন নেওয়া হচ্ছে...";
-    }
-
-
-    navigator.geolocation.getCurrentPosition(
-
-        function(position) {
-
-            const lat =
-                position.coords.latitude;
-
-            const lng =
-                position.coords.longitude;
-
-
-            /*
-             * Make sure main map exists.
-             */
-            if (!map) {
-
-                if (button) {
-
-                    button.disabled = false;
-
-                    button.innerHTML =
-                        "◎ আমার অবস্থান";
-                }
-
-                showToast(
-                    "মানচিত্র প্রস্তুত নয়",
-                    "কিছুক্ষণ পরে আবার চেষ্টা করুন।"
-                );
-
-                return;
-            }
-
-
-            /*
-             * Center main map.
-             */
-            map.setView(
-                [lat, lng],
-                15,
-                {
-                    animate: true
-                }
-            );
-
-
-            /*
-             * Remove old user marker.
-             */
-            if (userLocationMarker) {
-
-                userLocationMarker.remove();
-            }
-
-
-            /*
-             * Create current location marker.
-             */
-            userLocationMarker =
-                L.circleMarker(
-                    [lat, lng],
-                    {
-                        radius: 9,
-
-                        color: "#ffffff",
-
-                        weight: 3,
-
-                        fillColor:
-                            "#5b46e8",
-
-                        fillOpacity: 1
-                    }
-                ).addTo(map);
-
-
-            userLocationMarker.bindPopup(
-                "আপনার বর্তমান অবস্থান"
-            );
-
-
-            userLocationMarker.openPopup();
-
-
-            /*
-             * Scroll to main map.
-             */
-            const mapSection =
-                document.getElementById(
-                    "map-section"
-                );
-
-            if (mapSection) {
-
-                mapSection.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start"
-                });
-            }
-
-
-            if (button) {
-
-                button.disabled = false;
-
-                button.innerHTML =
-                    "✓ অবস্থান পাওয়া গেছে";
-            }
-
-
-            showToast(
-                "লোকেশন পাওয়া গেছে",
-                "আপনার বর্তমান অবস্থান মানচিত্রে দেখানো হয়েছে।"
-            );
-
-
-            setTimeout(() => {
-
-                if (button) {
-
-                    button.innerHTML =
-                        "◎ আমার অবস্থান";
-                }
-
-            }, 2500);
-        },
-
-
-        function(error) {
-
-            console.error(
-                "[SafeMap] Geolocation error:",
-                error
-            );
-
-
-            if (button) {
-
-                button.disabled = false;
-
-                button.innerHTML =
-                    "◎ আমার অবস্থান";
-            }
-
-
-            let message =
-                "লোকেশন পাওয়া যায়নি।";
-
-
-            if (
-                error.code ===
-                error.PERMISSION_DENIED
-            ) {
-
-                message =
-                    "Browser location permission দিন।";
-            }
-
-            else if (
-                error.code ===
-                error.POSITION_UNAVAILABLE
-            ) {
-
-                message =
-                    "বর্তমান অবস্থান পাওয়া যাচ্ছে না।";
-            }
-
-            else if (
-                error.code ===
-                error.TIMEOUT
-            ) {
-
-                message =
-                    "লোকেশন পেতে সময় শেষ হয়ে গেছে।";
-            }
-
-
-            showToast(
-                "লোকেশন পাওয়া যায়নি",
-                message
-            );
-        },
-
-
-        {
-            enableHighAccuracy: true,
-
-            timeout: 15000,
-
-            maximumAge: 30000
-        }
-    );
-}
-
-const locateMeBtn =
-    document.getElementById(
-        "locateMeBtn"
-    );
-
-if (locateMeBtn) {
-
-    locateMeBtn.addEventListener(
-        "click",
-        locateUserFromHero
-    );
-}

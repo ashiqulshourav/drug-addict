@@ -135,6 +135,114 @@ $maxLat = min(90, $lat + $latDelta);
 $minLng = max(-180, $lng - $lngDelta);
 $maxLng = min(180, $lng + $lngDelta);
 
+/*
+ * ---------------------------------------------------------
+ * Automatically find nearest police station
+ * ---------------------------------------------------------
+ *
+ * IMPORTANT:
+ * police_stations.latitude / longitude অবশ্যই populated থাকতে হবে।
+ *
+ * আমরা প্রথমে 20km bounding box দিয়ে candidate কমিয়ে নিচ্ছি।
+ * তারপর exact Haversine distance দিয়ে nearest station বের করছি।
+ */
+
+$stationLatDelta = 20 / 111.32;
+
+$stationCos = max(
+    0.15,
+    cos(deg2rad($lat))
+);
+
+$stationLngDelta =
+    20 / (111.32 * $stationCos);
+
+$stationMinLat = max(
+    -90,
+    $lat - $stationLatDelta
+);
+
+$stationMaxLat = min(
+    90,
+    $lat + $stationLatDelta
+);
+
+$stationMinLng = max(
+    -180,
+    $lng - $stationLngDelta
+);
+
+$stationMaxLng = min(
+    180,
+    $lng + $stationLngDelta
+);
+
+$stationStmt = $pdo->prepare("
+    SELECT
+        ps.id,
+
+        ps.name,
+
+        ps.latitude,
+
+        ps.longitude,
+
+        (
+            6371000 * 2 * ASIN(
+                SQRT(
+                    POWER(
+                        SIN(
+                            RADIANS(ps.latitude - ?) / 2
+                        ),
+                        2
+                    )
+                    +
+                    COS(RADIANS(?))
+                    *
+                    COS(RADIANS(ps.latitude))
+                    *
+                    POWER(
+                        SIN(
+                            RADIANS(ps.longitude - ?) / 2
+                        ),
+                        2
+                    )
+                )
+            )
+        ) AS distance_m
+
+    FROM police_stations ps
+
+    WHERE
+        ps.latitude IS NOT NULL
+        AND ps.longitude IS NOT NULL
+
+        AND ps.latitude BETWEEN ? AND ?
+        AND ps.longitude BETWEEN ? AND ?
+
+    ORDER BY distance_m ASC
+
+    LIMIT 1
+");
+
+$stationStmt->execute([
+    $lat,
+    $lat,
+    $lng,
+
+    $stationMinLat,
+    $stationMaxLat,
+
+    $stationMinLng,
+    $stationMaxLng
+]);
+
+$nearestStation = $stationStmt->fetch();
+
+$policeStationId = $nearestStation
+    ? (int) $nearestStation['id']
+    : null;
+
 $pdo->beginTransaction();
 
 try {
@@ -183,13 +291,23 @@ try {
 
         $update = $pdo->prepare(
             "UPDATE locations
-             SET type = ?, report_count = report_count + 1,
-                 use_count = use_count + ?, sale_count = sale_count + ?,
-                 title = ?, updated_at = NOW()
-             WHERE id = ?"
+            SET
+                type = ?,
+                report_count = report_count + 1,
+                use_count = use_count + ?,
+                sale_count = sale_count + ?,
+                title = ?,
+                police_station_id = COALESCE(?, police_station_id),
+                updated_at = NOW()
+            WHERE id = ?"
         );
         $update->execute([
-            $newType, $useInc, $saleInc, $title, $location['id']
+            $newType,
+            $useInc,
+            $saleInc,
+            $title,
+            $policeStationId,
+            $location['id']
         ]);
         $locationId = (int)$location['id'];
         $merged = true;
@@ -199,10 +317,28 @@ try {
 
         $insert = $pdo->prepare(
             "INSERT INTO locations
-             (latitude, longitude, title, type, report_count, use_count, sale_count)
-             VALUES (?, ?, ?, ?, 1, ?, ?)"
+            (
+                latitude,
+                longitude,
+                title,
+                type,
+                police_station_id,
+                report_count,
+                use_count,
+                sale_count
+            )
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?)"
         );
-        $insert->execute([$lat, $lng, $title, $type, $useCount, $saleCount]);
+
+        $insert->execute([
+            $lat,
+            $lng,
+            $title,
+            $type,
+            $policeStationId,
+            $useCount,
+            $saleCount
+        ]);
         $locationId = (int)$pdo->lastInsertId();
         $merged = false;
     }

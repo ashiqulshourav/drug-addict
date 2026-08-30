@@ -30,6 +30,169 @@ if ($willing && $contact === '') {
 
 /* Small abuse guard: 20 reports per IP fingerprint in 1 hour. */
 $pdo = db();
+/*
+|--------------------------------------------------------------------------
+| Find nearest Upazila
+|--------------------------------------------------------------------------
+*/
+
+$upazilaLatDelta =
+    20 / 111.32;
+
+$upazilaCos =
+    max(
+        0.15,
+        cos(
+            deg2rad($lat)
+        )
+    );
+
+$upazilaLngDelta =
+    20 /
+    (
+        111.32 *
+        $upazilaCos
+    );
+
+$upazilaMinLat =
+    max(
+        -90,
+        $lat -
+        $upazilaLatDelta
+    );
+
+$upazilaMaxLat =
+    min(
+        90,
+        $lat +
+        $upazilaLatDelta
+    );
+
+$upazilaMinLng =
+    max(
+        -180,
+        $lng -
+        $upazilaLngDelta
+    );
+
+$upazilaMaxLng =
+    min(
+        180,
+        $lng +
+        $upazilaLngDelta
+    );
+
+
+$upazilaStmt =
+    $pdo->prepare(
+        "
+        SELECT
+
+            id,
+
+            name,
+
+            bn_name,
+
+            district_id,
+
+            latitude,
+
+            longitude,
+
+            (
+                6371000 * 2 * ASIN(
+                    SQRT(
+
+                        POWER(
+                            SIN(
+                                RADIANS(
+                                    latitude - ?
+                                ) / 2
+                            ),
+                            2
+                        )
+
+                        +
+
+                        COS(
+                            RADIANS(?)
+                        )
+
+                        *
+
+                        COS(
+                            RADIANS(
+                                latitude
+                            )
+                        )
+
+                        *
+
+                        POWER(
+                            SIN(
+                                RADIANS(
+                                    longitude - ?
+                                ) / 2
+                            ),
+                            2
+                        )
+                    )
+                )
+            ) AS distance_m
+
+        FROM upazilas
+
+        WHERE
+            latitude IS NOT NULL
+
+            AND longitude IS NOT NULL
+
+            AND latitude
+                BETWEEN ?
+                AND ?
+
+            AND longitude
+                BETWEEN ?
+                AND ?
+
+        ORDER BY
+            distance_m ASC
+
+        LIMIT 1
+        "
+    );
+
+
+$upazilaStmt->execute([
+
+    $lat,
+
+    $lat,
+
+    $lng,
+
+    $upazilaMinLat,
+
+    $upazilaMaxLat,
+
+    $upazilaMinLng,
+
+    $upazilaMaxLng
+]);
+
+
+$nearestUpazila =
+    $upazilaStmt->fetch();
+
+
+$upazilaId =
+    $nearestUpazila
+        ? (int)
+            $nearestUpazila['id']
+        : null;
+
+
 $hash = ip_hash();
 $rate = $pdo->prepare(
     "SELECT COUNT(*) FROM reports
@@ -290,22 +453,49 @@ try {
         $saleInc = $type === 'sale' ? 1 : 0;
 
         $update = $pdo->prepare(
-            "UPDATE locations
+            "
+            UPDATE locations
+
             SET
+
                 type = ?,
-                report_count = report_count + 1,
-                use_count = use_count + ?,
-                sale_count = sale_count + ?,
+
+                report_count =
+                    report_count + 1,
+
+                use_count =
+                    use_count + ?,
+
+                sale_count =
+                    sale_count + ?,
+
                 title = ?,
-                police_station_id = COALESCE(?, police_station_id),
-                updated_at = NOW()
-            WHERE id = ?"
+
+                upazila_id =
+                    COALESCE(
+                        ?,
+                        upazila_id
+                    ),
+
+                police_station_id =
+                    COALESCE(
+                        ?,
+                        police_station_id
+                    ),
+
+                updated_at =
+                    NOW()
+
+            WHERE id = ?
+            "
         );
+
         $update->execute([
             $newType,
             $useInc,
             $saleInc,
             $title,
+            $upazilaId,
             $policeStationId,
             $location['id']
         ]);
@@ -316,19 +506,34 @@ try {
         $saleCount = $type === 'sale' ? 1 : 0;
 
         $insert = $pdo->prepare(
-            "INSERT INTO locations
-            (
-                latitude,
-                longitude,
-                title,
-                type,
-                police_station_id,
-                report_count,
-                use_count,
-                sale_count
-            )
-            VALUES (?, ?, ?, ?, ?, 1, ?, ?)"
-        );
+        "
+        INSERT INTO locations
+        (
+            latitude,
+            longitude,
+            title,
+            type,
+            police_station_id,
+            upazila_id,
+            report_count,
+            use_count,
+            sale_count
+        )
+
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            1,
+            ?,
+            ?
+        )
+        "
+    );
 
         $insert->execute([
             $lat,
@@ -336,6 +541,7 @@ try {
             $title,
             $type,
             $policeStationId,
+            $upazilaId,
             $useCount,
             $saleCount
         ]);
@@ -449,18 +655,33 @@ $policeStationId = $station ? (int) $station['id'] : null;
 
 
 $insert = $pdo->prepare(
-    "INSERT INTO locations
+    "
+    INSERT INTO locations
     (
         latitude,
         longitude,
         title,
         type,
         police_station_id,
+        upazila_id,
         report_count,
         use_count,
         sale_count
     )
-    VALUES (?, ?, ?, ?, ?, 1, ?, ?)"
+
+    VALUES
+    (
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        ?,
+        1,
+        ?,
+        ?
+    )
+    "
 );
 
 $insert->execute([
@@ -469,6 +690,7 @@ $insert->execute([
     $title,
     $type,
     $policeStationId,
+    $upazilaId,
     $useCount,
     $saleCount
 ]);

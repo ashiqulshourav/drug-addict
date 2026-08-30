@@ -1,10 +1,6 @@
 <?php
 declare(strict_types=1);
 
-/*
- * Copy this file to config/database.php on the hosting account
- * and replace the four values with the MySQL credentials from the host.
- */
 const DB_HOST = 'localhost';
 const DB_NAME = 'drug';
 const DB_USER = 'root';

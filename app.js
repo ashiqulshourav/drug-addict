@@ -1341,25 +1341,26 @@ function locateUserOnMainMap() {
         function(position) {
 
             const lat =
-                position.coords.latitude;
+                Number(
+                    position.coords.latitude
+                );
 
             const lng =
-                position.coords.longitude;
+                Number(
+                    position.coords.longitude
+                );
 
 
-            if (!map) {
-
-                initMap();
-            }
-
-
-            if (!map) {
+            if (
+                !Number.isFinite(lat) ||
+                !Number.isFinite(lng)
+            ) {
 
                 restoreLocateButton();
 
                 showToast(
-                    "মানচিত্র প্রস্তুত নয়",
-                    "কিছুক্ষণ পরে আবার চেষ্টা করুন।"
+                    "লোকেশন পাওয়া যায়নি",
+                    "সঠিক coordinates পাওয়া যায়নি।"
                 );
 
                 return;
@@ -1367,41 +1368,65 @@ function locateUserOnMainMap() {
 
 
             /*
-             * Main map center.
+             * HERO MAP
              */
 
-            map.setView(
-                [lat, lng],
-                16,
-                {
-                    animate: true
-                }
-            );
+            if (!heroMap) {
+
+                initHeroMap();
+            }
 
 
-            /*
-             * Remove previous user marker.
-             */
+            if (!heroMap) {
 
-            if (userLocationMarker) {
+                restoreLocateButton();
 
-                try {
-                    map.removeLayer(
-                        userLocationMarker
-                    );
-                } catch (error) {
-                    // Ignore.
-                }
+                showToast(
+                    "Map প্রস্তুত নয়",
+                    "Hero Map initialize করা যায়নি।"
+                );
+
+                return;
             }
 
 
             /*
-             * User location marker.
+             * Remove old marker
+             */
+
+            if (
+                userLocationMarker
+            ) {
+
+                try {
+
+                    heroMap.removeLayer(
+                        userLocationMarker
+                    );
+
+                } catch (
+                    error
+                ) {
+
+                    console.warn(
+                        error
+                    );
+                }
+
+                userLocationMarker =
+                    null;
+            }
+
+
+            /*
+             * Add current location
              */
 
             userLocationMarker =
                 L.circleMarker(
+
                     [lat, lng],
+
                     {
                         radius: 9,
 
@@ -1409,12 +1434,14 @@ function locateUserOnMainMap() {
 
                         weight: 3,
 
-                        fillColor:
-                            "#5b46e8",
+                        fillColor: "#5b46e8",
 
                         fillOpacity: 1
                     }
-                ).addTo(map);
+
+                ).addTo(
+                    heroMap
+                );
 
 
             userLocationMarker.bindPopup(
@@ -1423,23 +1450,48 @@ function locateUserOnMainMap() {
 
 
             /*
-             * Scroll to second/main map.
+             * CENTER HERO MAP
              */
 
-            const mapSection =
-                document.getElementById(
-                    "map-section"
-                );
+            heroMap.setView(
+
+                [lat, lng],
+
+                16,
+
+                {
+                    animate: true
+                }
+            );
 
 
-            if (mapSection) {
+            setTimeout(
+                function() {
 
-                mapSection.scrollIntoView({
-                    behavior: "smooth",
+                    if (
+                        userLocationMarker
+                    ) {
 
-                    block: "start"
-                });
-            }
+                        userLocationMarker
+                            .openPopup();
+                    }
+
+                },
+                500
+            );
+
+
+            setTimeout(
+                function() {
+
+                    if (heroMap) {
+
+                        heroMap.invalidateSize();
+                    }
+
+                },
+                200
+            );
 
 
             restoreLocateButton();
@@ -1447,7 +1499,7 @@ function locateUserOnMainMap() {
 
             showToast(
                 "লোকেশন পাওয়া গেছে",
-                "আপনার বর্তমান অবস্থান মানচিত্রে দেখানো হয়েছে।"
+                "আপনার অবস্থান Hero Map-এ দেখানো হয়েছে।"
             );
         },
 
@@ -1489,7 +1541,7 @@ function locateUserOnMainMap() {
             ) {
 
                 message =
-                    "লোকেশন পেতে সময় শেষ হয়ে গেছে।";
+                    "লোকেশন পেতে সময় শেষ হয়েছে।";
             }
 
 
@@ -1509,7 +1561,6 @@ function locateUserOnMainMap() {
         }
     );
 }
-
 
 function restoreLocateButton() {
 
@@ -3378,8 +3429,9 @@ async function handleReportSubmit(
 
             await Promise.all([
                 loadMapLocations(),
-                loadBackendData()
-            ]);
+                loadBackendData(),
+                loadStatisticsByDivision(divisionSelect?.value || "all")
+              ]);
 
 
             renderMarkers();
@@ -3743,7 +3795,8 @@ async function initSafeMap() {
     const results =
         await Promise.allSettled([
             loadMapLocations(),
-            loadBackendData()
+            loadBackendData(),
+            loadStatisticsByDivision(divisionSelect?.value || "all")
         ]);
 
 

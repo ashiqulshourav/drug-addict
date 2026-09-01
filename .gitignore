@@ -1,0 +1,53 @@
+# ================================
+# Environment / secrets
+# ================================
+.env
+.env.*
+!.env.example
+config/database.php
+config/database.local.php
+config/*local*.php
+
+# ================================
+# Database dumps / local data
+# Keep database.sql if it contains schema only.
+# ================================
+*.sql.bak
+*.dump
+*.sqlite
+*.sqlite3
+
+# ================================
+# User uploads / runtime files
+# ================================
+uploads/*
+!uploads/.gitkeep
+storage/
+logs/
+*.log
+
+# ================================
+# Dependencies / build output
+# ================================
+node_modules/
+vendor/
+dist/
+build/
+
+# ================================
+# OS / IDE
+# ================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ================================
+# Local development
+# ================================
+*.local
+*.local.php
+phpunit.xml
+phpunit.xml.dist.bak

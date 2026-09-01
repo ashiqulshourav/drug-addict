@@ -95,6 +95,12 @@ $districts = [];
 
 $upazilas = [];
 
+$policeStations = [];
+
+$sourceDivisionsById = [];
+
+$sourceDistrictsById = [];
+
 
 /*
 |--------------------------------------------------------------------------
@@ -141,6 +147,28 @@ foreach (
         $divisions =
             $table['data'];
 
+        foreach (
+            $divisions as $row
+        ) {
+            $sourceId =
+                isset($row['id'])
+                    ? (int) $row['id']
+                    : 0;
+
+            if (
+                $sourceId > 0
+            ) {
+                $sourceDivisionsById[$sourceId] =
+                    trim(
+                        (string)
+                        (
+                            $row['name']
+                            ?? ''
+                        )
+                    );
+            }
+        }
+
     } elseif (
         $name === 'districts'
     ) {
@@ -148,11 +176,40 @@ foreach (
         $districts =
             $table['data'];
 
+        foreach (
+            $districts as $row
+        ) {
+            $sourceId =
+                isset($row['id'])
+                    ? (int) $row['id']
+                    : 0;
+
+            if (
+                $sourceId > 0
+            ) {
+                $sourceDistrictsById[$sourceId] =
+                    trim(
+                        (string)
+                        (
+                            $row['name']
+                            ?? ''
+                        )
+                    );
+            }
+        }
+
     } elseif (
         $name === 'upazilas'
     ) {
 
         $upazilas =
+            $table['data'];
+
+    } elseif (
+        $name === 'police_stations'
+    ) {
+
+        $policeStations =
             $table['data'];
     }
 }
@@ -168,6 +225,10 @@ echo "Districts: "
 
 echo "Upazilas: "
     . count($upazilas)
+    . "\n";
+
+echo "Police stations: "
+    . count($policeStations)
     . "\n\n";
 
 
@@ -322,47 +383,66 @@ try {
             continue;
         }
 
-
-        /*
-         * Source district_id/Division relation
-         * is used to locate the parent.
-         *
-         * We first try source division_id.
-         */
-
-        $parent =
-            $pdo->prepare(
-                "
-                SELECT id
-
-                FROM divisions
-
-                WHERE id = ?
-
-                LIMIT 1
-                "
+        $sourceDivisionName =
+            trim(
+                (string)
+                (
+                    $sourceDivisionsById[$divisionId]
+                    ?? ''
+                )
             );
 
-        $parent->execute([
-            $divisionId
-        ]);
+        $division = null;
 
-        $division =
-            $parent->fetch();
+        if (
+            $sourceDivisionName !== ''
+        ) {
+            $divisionStmt =
+                $pdo->prepare(
+                    "
+                    SELECT id
 
+                    FROM divisions
 
-        /*
-         * If source IDs don't match our IDs,
-         * fall back to normalized name.
-         */
+                    WHERE slug = ?
+
+                    LIMIT 1
+                    "
+                );
+
+            $divisionStmt->execute([
+                slugify($sourceDivisionName)
+            ]);
+
+            $division =
+                $divisionStmt->fetch();
+        }
+
+        if (
+            !$division
+        ) {
+            $parent =
+                $pdo->prepare(
+                    "
+                    SELECT id
+
+                    FROM divisions
+
+                    WHERE id = ?
+
+                    LIMIT 1
+                    "
+                );
+
+            $parent->execute([
+                $divisionId
+            ]);
+
+            $division =
+                $parent->fetch();
+        }
 
         if (!$division) {
-
-            /*
-             * Skip instead of creating
-             * a wrong relationship.
-             */
-
             continue;
         }
 
@@ -380,6 +460,96 @@ try {
             $name,
 
             $slug
+        ]);
+    }
+
+    $districtStationInsert =
+        $pdo->prepare(
+            "
+            INSERT INTO police_stations
+                (
+                    district_id,
+                    name,
+                    latitude,
+                    longitude
+                )
+
+            VALUES
+                (
+                    ?,
+                    ?,
+                    ?,
+                    ?
+                )
+
+            ON DUPLICATE KEY UPDATE
+                name = VALUES(name),
+                latitude = VALUES(latitude),
+                longitude = VALUES(longitude)
+            "
+        );
+
+    foreach (
+        $districts as $row
+    ) {
+
+        $districtName =
+            trim(
+                (string)
+                (
+                    $row['name']
+                    ?? ''
+                )
+            );
+
+        if (
+            $districtName === ''
+        ) {
+            continue;
+        }
+
+        $districtStmt =
+            $pdo->prepare(
+                "
+                SELECT id
+
+                FROM districts
+
+                WHERE name = ?
+
+                LIMIT 1
+                "
+            );
+
+        $districtStmt->execute([
+            $districtName
+        ]);
+
+        $district =
+            $districtStmt->fetch();
+
+        if (!$district) {
+            continue;
+        }
+
+        $stationName =
+            $districtName . ' থানা';
+
+        $lat =
+            isset($row['lat'])
+                ? (float) $row['lat']
+                : null;
+
+        $lng =
+            isset($row['lng'])
+                ? (float) $row['lng']
+                : null;
+
+        $districtStationInsert->execute([
+            (int) $district['id'],
+            $stationName,
+            $lat,
+            $lng
         ]);
     }
 
@@ -506,37 +676,68 @@ try {
             );
 
 
-        /*
-         * If JSON doesn't provide district_name,
-         * we cannot safely assign it.
-         */
-
         if (
             $districtName === ''
         ) {
-            continue;
+
+            $sourceDistrictName =
+                trim(
+                    (string)
+                    (
+                        $sourceDistrictsById[$sourceDistrictId]
+                        ?? ''
+                    )
+                );
+
+            if (
+                $sourceDistrictName !== ''
+            ) {
+                $districtStmt =
+                    $pdo->prepare(
+                        "
+                        SELECT id
+
+                        FROM districts
+
+                        WHERE name = ?
+
+                        LIMIT 1
+                        "
+                    );
+
+                $districtStmt->execute([
+                    $sourceDistrictName
+                ]);
+
+                $district =
+                    $districtStmt->fetch();
+
+            } else {
+                $district = null;
+            }
+
+        } else {
+
+            $districtStmt =
+                $pdo->prepare(
+                    "
+                    SELECT id
+
+                    FROM districts
+
+                    WHERE name = ?
+
+                    LIMIT 1
+                    "
+                );
+
+            $districtStmt->execute([
+                $districtName
+            ]);
+
+            $district =
+                $districtStmt->fetch();
         }
-
-
-        $districtStmt =
-            $pdo->prepare(
-                "
-                SELECT id
-
-                FROM districts
-
-                WHERE name = ?
-
-                LIMIT 1
-                "
-            );
-
-        $districtStmt->execute([
-            $districtName
-        ]);
-
-        $district =
-            $districtStmt->fetch();
 
 
         if (!$district) {
@@ -568,6 +769,158 @@ try {
             $lng
         ]);
     }
+
+    $stationInsert =
+        $pdo->prepare(
+            "
+            INSERT INTO police_stations
+                (
+                    district_id,
+                    name,
+                    latitude,
+                    longitude
+                )
+
+            VALUES
+                (
+                    ?,
+                    ?,
+                    ?,
+                    ?
+                )
+
+            ON DUPLICATE KEY UPDATE
+                name = VALUES(name),
+                latitude = VALUES(latitude),
+                longitude = VALUES(longitude)
+            "
+        );
+
+
+    if (
+        $policeStations
+    ) {
+
+        foreach (
+            $policeStations as $row
+        ) {
+
+            $name =
+                trim(
+                    (string)
+                    (
+                        $row['name']
+                        ?? ''
+                    )
+                );
+
+            $districtName =
+                trim(
+                    (string)
+                    (
+                        $row['district_name']
+                        ?? ''
+                    )
+                );
+
+            if (
+                $name === ''
+            ) {
+                continue;
+            }
+
+            $districtId = null;
+
+            if (
+                $districtName !== ''
+            ) {
+
+                $districtStmt =
+                    $pdo->prepare(
+                        "
+                        SELECT id
+
+                        FROM districts
+
+                        WHERE name = ?
+
+                        LIMIT 1
+                        "
+                    );
+
+                $districtStmt->execute([
+                    $districtName
+                ]);
+
+                $district =
+                    $districtStmt->fetch();
+
+                if ($district) {
+                    $districtId =
+                        (int)
+                        $district['id'];
+                }
+            }
+
+            if (
+                $districtId === null
+            ) {
+                continue;
+            }
+
+            $lat =
+                isset(
+                    $row['lat']
+                )
+                    ? (float) $row['lat']
+                    : null;
+
+            $lng =
+                isset(
+                    $row['lng']
+                )
+                    ? (float) $row['lng']
+                    : null;
+
+            $stationInsert->execute([
+                $districtId,
+                $name,
+                $lat,
+                $lng
+            ]);
+        }
+
+    }
+
+
+    $locationUpdate =
+        $pdo->prepare(
+            "
+            UPDATE locations l
+
+            SET l.police_station_id = (
+                SELECT ps.id
+                FROM police_stations ps
+                WHERE ps.latitude IS NOT NULL
+                  AND ps.longitude IS NOT NULL
+                ORDER BY (
+                    6371000 * 2 * ASIN(
+                        SQRT(
+                            POWER(SIN(RADIANS(ps.latitude - l.latitude) / 2), 2)
+                            + COS(RADIANS(ps.latitude))
+                            * COS(RADIANS(l.latitude))
+                            * POWER(SIN(RADIANS(ps.longitude - l.longitude) / 2), 2)
+                        )
+                    )
+                ) ASC
+                LIMIT 1
+            )
+
+            WHERE l.police_station_id IS NULL
+            "
+        );
+
+    $locationUpdate->execute();
 
 
     $pdo->commit();

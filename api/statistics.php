@@ -11,10 +11,10 @@ try {
     $pdo = db();
 
     /*
-     * =========================================================
-     * DIVISION FILTER
-     * =========================================================
-     */
+    |--------------------------------------------------------------------------
+    | Division filter
+    |--------------------------------------------------------------------------
+    */
 
     $division = trim(
         (string) ($_GET['division'] ?? 'all')
@@ -38,37 +38,31 @@ try {
 
 
     /*
-     * =========================================================
-     * DIVISION CONDITION
-     *
-     * Location -> Police Station
-     * -> District -> Division
-     *
-     * Statistics-এর জন্য Upazila প্রয়োজন নেই।
-     * =========================================================
-     */
+    |--------------------------------------------------------------------------
+    | Division WHERE
+    |--------------------------------------------------------------------------
+    */
 
-    $divisionCondition = '';
-    $divisionParams = [];
+    $divisionWhere = '';
+    $params = [];
 
     if ($division !== 'all') {
 
-        $divisionCondition = "
-            AND dv.slug = ?
+        $divisionWhere = "
+            WHERE dv.slug = ?
         ";
 
-        $divisionParams[] = $division;
+        $params[] = $division;
     }
 
 
     /*
-     * =========================================================
-     * REPORT STATISTICS
-     * =========================================================
-     */
+    |--------------------------------------------------------------------------
+    | REPORT STATISTICS
+    |--------------------------------------------------------------------------
+    */
 
     $reportSql = "
-
         SELECT
 
             COUNT(r.id) AS total_reports,
@@ -109,27 +103,22 @@ try {
         LEFT JOIN divisions dv
             ON dv.id = d.division_id
 
-        WHERE 1 = 1
-
-        {$divisionCondition}
-
+        $divisionWhere
     ";
 
     $stmt = $pdo->prepare($reportSql);
-
-    $stmt->execute($divisionParams);
+    $stmt->execute($params);
 
     $reportStats = $stmt->fetch() ?: [];
 
 
     /*
-     * =========================================================
-     * LOCATION STATISTICS
-     * =========================================================
-     */
+    |--------------------------------------------------------------------------
+    | LOCATION STATISTICS
+    |--------------------------------------------------------------------------
+    */
 
     $locationSql = "
-
         SELECT
 
             COUNT(l.id) AS total_locations,
@@ -178,31 +167,28 @@ try {
         LEFT JOIN divisions dv
             ON dv.id = d.division_id
 
-        WHERE 1 = 1
-
-        {$divisionCondition}
-
+        $divisionWhere
     ";
 
     $stmt = $pdo->prepare($locationSql);
-
-    $stmt->execute($divisionParams);
+    $stmt->execute($params);
 
     $locationStats = $stmt->fetch() ?: [];
 
 
     /*
-     * =========================================================
-     * POLICE STATION STATISTICS
-     *
-     * IMPORTANT:
-     * Every station of selected division will be returned,
-     * even if it has zero reports.
-     * =========================================================
-     */
+    |--------------------------------------------------------------------------
+    | ALL POLICE STATIONS
+    |
+    | Default:
+    | division = all
+    |
+    | Then every police station will be returned,
+    | including stations with zero reports.
+    |--------------------------------------------------------------------------
+    */
 
     $stationSql = "
-
         SELECT
 
             ps.id,
@@ -252,15 +238,12 @@ try {
 
         LEFT JOIN reports r
             ON r.location_id = l.id
-
     ";
 
     if ($division !== 'all') {
 
         $stationSql .= "
-
             WHERE dv.slug = ?
-
         ";
     }
 
@@ -282,6 +265,7 @@ try {
 
     ";
 
+
     $stmt = $pdo->prepare($stationSql);
 
     if ($division !== 'all') {
@@ -297,10 +281,10 @@ try {
 
 
     /*
-     * =========================================================
-     * BUILD STATION ARRAY
-     * =========================================================
-     */
+    |--------------------------------------------------------------------------
+    | Build station array
+    |--------------------------------------------------------------------------
+    */
 
     $stations = [];
 
@@ -336,13 +320,12 @@ try {
 
 
     /*
-     * =========================================================
-     * TOTAL POLICE STATION COUNT
-     * =========================================================
-     */
+    |--------------------------------------------------------------------------
+    | Station count
+    |--------------------------------------------------------------------------
+    */
 
     $stationCountSql = "
-
         SELECT COUNT(*)
 
         FROM police_stations ps
@@ -352,15 +335,12 @@ try {
 
         INNER JOIN divisions dv
             ON dv.id = d.division_id
-
     ";
 
     if ($division !== 'all') {
 
         $stationCountSql .= "
-
             WHERE dv.slug = ?
-
         ";
     }
 
@@ -382,10 +362,10 @@ try {
 
 
     /*
-     * =========================================================
-     * FINAL RESPONSE
-     * =========================================================
-     */
+    |--------------------------------------------------------------------------
+    | Response
+    |--------------------------------------------------------------------------
+    */
 
     json_response([
 

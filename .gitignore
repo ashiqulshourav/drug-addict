@@ -16,7 +16,7 @@ config/*local*.php
 *.dump
 *.sqlite
 *.sqlite3
-*.sql
+# *.sql
 
 # ================================
 # User uploads / runtime files

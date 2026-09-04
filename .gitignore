@@ -52,3 +52,10 @@ Thumbs.db
 *.local.php
 phpunit.xml
 phpunit.xml.dist.bak
+
+# ================================
+# production issue 
+# ================================
+.well-known/
+*/error_log
+error_log

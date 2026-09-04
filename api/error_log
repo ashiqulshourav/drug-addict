@@ -1,0 +1,36 @@
+[01-Sep-2026 18:35:20 UTC] PHP Warning:  require_once(/home/devnotation9090/madok.devnotation.com/api/../config/database.php): Failed to open stream: No such file or directory in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:35:20 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/devnotation9090/madok.devnotation.com/api/../config/database.php' (include_path='.:/opt/alt/php81/usr/share/pear:/opt/alt/php81/usr/share/php:/usr/share/pear:/usr/share/php') in /home/devnotation9090/madok.devnotation.com/api/_common.php:7
+Stack trace:
+#0 /home/devnotation9090/madok.devnotation.com/api/statistics.php(5): require_once()
+#1 {main}
+  thrown in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:35:20 UTC] PHP Warning:  require_once(/home/devnotation9090/madok.devnotation.com/api/../config/database.php): Failed to open stream: No such file or directory in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:35:20 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/devnotation9090/madok.devnotation.com/api/../config/database.php' (include_path='.:/opt/alt/php81/usr/share/pear:/opt/alt/php81/usr/share/php:/usr/share/pear:/usr/share/php') in /home/devnotation9090/madok.devnotation.com/api/_common.php:7
+Stack trace:
+#0 /home/devnotation9090/madok.devnotation.com/api/locations.php(4): require_once()
+#1 {main}
+  thrown in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:35:20 UTC] PHP Warning:  require_once(/home/devnotation9090/madok.devnotation.com/api/../config/database.php): Failed to open stream: No such file or directory in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:35:20 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/devnotation9090/madok.devnotation.com/api/../config/database.php' (include_path='.:/opt/alt/php81/usr/share/pear:/opt/alt/php81/usr/share/php:/usr/share/pear:/usr/share/php') in /home/devnotation9090/madok.devnotation.com/api/_common.php:7
+Stack trace:
+#0 /home/devnotation9090/madok.devnotation.com/api/statistics.php(5): require_once()
+#1 {main}
+  thrown in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:40:04 UTC] PHP Warning:  require_once(/home/devnotation9090/madok.devnotation.com/api/../config/database.php): Failed to open stream: No such file or directory in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:40:04 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/devnotation9090/madok.devnotation.com/api/../config/database.php' (include_path='.:/opt/alt/php81/usr/share/pear:/opt/alt/php81/usr/share/php:/usr/share/pear:/usr/share/php') in /home/devnotation9090/madok.devnotation.com/api/_common.php:7
+Stack trace:
+#0 /home/devnotation9090/madok.devnotation.com/api/locations.php(4): require_once()
+#1 {main}
+  thrown in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:40:04 UTC] PHP Warning:  require_once(/home/devnotation9090/madok.devnotation.com/api/../config/database.php): Failed to open stream: No such file or directory in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:40:04 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/devnotation9090/madok.devnotation.com/api/../config/database.php' (include_path='.:/opt/alt/php81/usr/share/pear:/opt/alt/php81/usr/share/php:/usr/share/pear:/usr/share/php') in /home/devnotation9090/madok.devnotation.com/api/_common.php:7
+Stack trace:
+#0 /home/devnotation9090/madok.devnotation.com/api/statistics.php(5): require_once()
+#1 {main}
+  thrown in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:40:38 UTC] PHP Warning:  require_once(/home/devnotation9090/madok.devnotation.com/api/../config/database.php): Failed to open stream: No such file or directory in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7
+[01-Sep-2026 18:40:38 UTC] PHP Fatal error:  Uncaught Error: Failed opening required '/home/devnotation9090/madok.devnotation.com/api/../config/database.php' (include_path='.:/opt/alt/php81/usr/share/pear:/opt/alt/php81/usr/share/php:/usr/share/pear:/usr/share/php') in /home/devnotation9090/madok.devnotation.com/api/_common.php:7
+Stack trace:
+#0 /home/devnotation9090/madok.devnotation.com/api/statistics.php(5): require_once()
+#1 {main}
+  thrown in /home/devnotation9090/madok.devnotation.com/api/_common.php on line 7

@@ -6,122 +6,290 @@ require_once __DIR__ . '/../config/database.php';
 
 $pdo = db();
 
-$jsonFile =
-    __DIR__ .
-    '/../data/db_geocode.json';
+$hasColumn = static function (
+    PDO $pdo,
+    string $table,
+    string $column
+): bool {
+    $stmt = $pdo->prepare(
+        "
+        SELECT COUNT(*)
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND COLUMN_NAME = ?
+        "
+    );
+
+    $stmt->execute([
+        $table,
+        $column
+    ]);
+
+    return (int) $stmt->fetchColumn() > 0;
+};
+
+if (!$hasColumn($pdo, 'divisions', 'source_id')) {
+    $pdo->exec(
+        'ALTER TABLE divisions ADD source_id SMALLINT UNSIGNED NULL AFTER id'
+    );
+    $pdo->exec(
+        'UPDATE divisions SET source_id = id WHERE source_id IS NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE divisions MODIFY source_id SMALLINT UNSIGNED NOT NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE divisions ADD UNIQUE KEY uq_division_source_id (source_id)'
+    );
+}
+
+if (!$hasColumn($pdo, 'divisions', 'bn_name')) {
+    $pdo->exec(
+        'ALTER TABLE divisions ADD bn_name VARCHAR(80) NULL AFTER name'
+    );
+}
+
+if (!$hasColumn($pdo, 'divisions', 'latitude')) {
+    $pdo->exec(
+        'ALTER TABLE divisions ADD latitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'divisions', 'longitude')) {
+    $pdo->exec(
+        'ALTER TABLE divisions ADD longitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'districts', 'source_id')) {
+    $pdo->exec(
+        'ALTER TABLE districts ADD source_id SMALLINT UNSIGNED NULL AFTER id'
+    );
+    $pdo->exec(
+        'UPDATE districts SET source_id = id WHERE source_id IS NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE districts MODIFY source_id SMALLINT UNSIGNED NOT NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE districts ADD UNIQUE KEY uq_district_source_id (source_id)'
+    );
+}
+
+if (!$hasColumn($pdo, 'districts', 'bn_name')) {
+    $pdo->exec(
+        'ALTER TABLE districts ADD bn_name VARCHAR(80) NULL AFTER name'
+    );
+}
+
+if (!$hasColumn($pdo, 'districts', 'latitude')) {
+    $pdo->exec(
+        'ALTER TABLE districts ADD latitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'districts', 'longitude')) {
+    $pdo->exec(
+        'ALTER TABLE districts ADD longitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'upazilas', 'source_id')) {
+    $pdo->exec(
+        'ALTER TABLE upazilas ADD source_id INT UNSIGNED NULL AFTER id'
+    );
+    $pdo->exec(
+        'UPDATE upazilas SET source_id = id WHERE source_id IS NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE upazilas MODIFY source_id INT UNSIGNED NOT NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE upazilas ADD UNIQUE KEY uq_upazila_source_id (source_id)'
+    );
+}
+
+if (!$hasColumn($pdo, 'upazilas', 'latitude')) {
+    $pdo->exec(
+        'ALTER TABLE upazilas ADD latitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'upazilas', 'longitude')) {
+    $pdo->exec(
+        'ALTER TABLE upazilas ADD longitude DECIMAL(10,7) NULL'
+    );
+}
+
+$pdo->exec(
+    "
+    ALTER TABLE divisions
+        CONVERT TO CHARACTER SET utf8mb4
+        COLLATE utf8mb4_unicode_ci
+    "
+);
+
+$pdo->exec(
+    "
+    ALTER TABLE districts
+        CONVERT TO CHARACTER SET utf8mb4
+        COLLATE utf8mb4_unicode_ci
+    "
+);
+
+$pdo->exec(
+    "
+    ALTER TABLE upazilas
+        CONVERT TO CHARACTER SET utf8mb4
+        COLLATE utf8mb4_unicode_ci
+    "
+);
+
+$pdo->exec(
+    'UPDATE divisions SET source_id = 1000 + id'
+);
+
+$pdo->exec(
+    'UPDATE upazilas SET source_id = 1000000 + id'
+);
+
+$jsonFile = __DIR__ . '/../data/db_geocode.json';
 
 if (!file_exists($jsonFile)) {
-
-    die(
-        "db_geocode.json পাওয়া যায়নি।\n"
-    );
+    die("db_geocode.json পাওয়া যায়নি.\n");
 }
 
-$json =
-    file_get_contents(
-        $jsonFile
-    );
+$json = file_get_contents($jsonFile);
 
-$data =
-    json_decode(
-        $json,
-        true
-    );
-
-if (
-    !is_array($data)
-) {
-
-    die(
-        "JSON parse করা যায়নি।\n"
-    );
+if ($json === false) {
+    die("db_geocode.json read করা যায়নি.\n");
 }
 
+$data = json_decode($json, true);
 
-/*
-|--------------------------------------------------------------------------
-| IMPORTANT
-|--------------------------------------------------------------------------
-|
-| এই dataset-এর structure আগে inspect করছি।
-|
-*/
+if (!is_array($data)) {
+    die("JSON parse করা যায়নি.\n");
+}
 
 echo "<pre>";
-
 echo "JSON loaded successfully.\n\n";
 
 
 /*
 |--------------------------------------------------------------------------
-| Helper
+| Helpers
 |--------------------------------------------------------------------------
 */
 
-function slugify(
-    string $value
+function slugify(string $value): string
+{
+    $value = trim(strtolower($value));
+
+    $value = preg_replace(
+        '/[^a-z0-9]+/',
+        '-',
+        $value
+    ) ?? '';
+
+    return trim($value, '-');
+}
+
+
+function getSlug(
+    array $row,
+    string $prefix,
+    int $id
 ): string {
-
-    $value =
-        trim(
-            strtolower(
-                $value
-            )
-        );
-
-    $value =
-        preg_replace(
-            '/[^a-z0-9]+/',
-            '-',
-            $value
-        );
-
-    return trim(
-        $value,
-        '-'
+    $slug = trim(
+        (string)($row['slug'] ?? '')
     );
+
+    if ($slug !== '') {
+        return strtolower($slug);
+    }
+
+    $slug = slugify(
+        (string)($row['name'] ?? '')
+    );
+
+    return $slug !== ''
+        ? $slug
+        : $prefix . '-' . $id;
+}
+
+
+function getLatitude(array $row): ?float
+{
+    if (
+        isset($row['latitude']) &&
+        $row['latitude'] !== ''
+    ) {
+        return (float)$row['latitude'];
+    }
+
+    if (
+        isset($row['lat']) &&
+        $row['lat'] !== ''
+    ) {
+        return (float)$row['lat'];
+    }
+
+    return null;
+}
+
+
+function getLongitude(array $row): ?float
+{
+    if (
+        isset($row['longitude']) &&
+        $row['longitude'] !== ''
+    ) {
+        return (float)$row['longitude'];
+    }
+
+    if (
+        isset($row['lng']) &&
+        $row['lng'] !== ''
+    ) {
+        return (float)$row['lng'];
+    }
+
+    return null;
 }
 
 
 /*
 |--------------------------------------------------------------------------
-| Find table data
+| Read JSON tables
+|--------------------------------------------------------------------------
+|
+| Expected structure:
+|
+| divisions
+| districts
+| upazilas
+|
+| police_stations is intentionally ignored.
+|
 |--------------------------------------------------------------------------
 */
 
 $divisions = [];
-
 $districts = [];
-
 $upazilas = [];
 
 $policeStations = [];
 
-$sourceDivisionsById = [];
 
-$sourceDistrictsById = [];
+foreach ($data as $table) {
 
-
-/*
-|--------------------------------------------------------------------------
-| The source JSON is a phpMyAdmin-style export.
-|--------------------------------------------------------------------------
-*/
-
-foreach (
-    $data as $table
-) {
-
-    if (
-        !isset(
-            $table['type']
-        )
-    ) {
+    if (!is_array($table)) {
         continue;
     }
 
     if (
-        $table['type'] !== 'table'
+        ($table['type'] ?? '') !== 'table'
     ) {
         continue;
     }
@@ -135,82 +303,37 @@ foreach (
         continue;
     }
 
-    $name =
-        strtolower(
-            $table['name']
-        );
+    $tableName = strtolower(
+        (string)$table['name']
+    );
 
-    if (
-        $name === 'divisions'
-    ) {
 
-        $divisions =
-            $table['data'];
+    if ($tableName === 'divisions') {
 
-        foreach (
-            $divisions as $row
-        ) {
-            $sourceId =
-                isset($row['id'])
-                    ? (int) $row['id']
-                    : 0;
+        $divisions = is_array($table['data'])
+            ? $table['data']
+            : [];
 
-            if (
-                $sourceId > 0
-            ) {
-                $sourceDivisionsById[$sourceId] =
-                    trim(
-                        (string)
-                        (
-                            $row['name']
-                            ?? ''
-                        )
-                    );
-            }
-        }
 
-    } elseif (
-        $name === 'districts'
-    ) {
+    } elseif ($tableName === 'districts') {
 
-        $districts =
-            $table['data'];
+        $districts = is_array($table['data'])
+            ? $table['data']
+            : [];
 
-        foreach (
-            $districts as $row
-        ) {
-            $sourceId =
-                isset($row['id'])
-                    ? (int) $row['id']
-                    : 0;
 
-            if (
-                $sourceId > 0
-            ) {
-                $sourceDistrictsById[$sourceId] =
-                    trim(
-                        (string)
-                        (
-                            $row['name']
-                            ?? ''
-                        )
-                    );
-            }
-        }
+    } elseif ($tableName === 'upazilas') {
 
-    } elseif (
-        $name === 'upazilas'
-    ) {
+        $upazilas = is_array($table['data'])
+            ? $table['data']
+            : [];
 
-        $upazilas =
-            $table['data'];
 
-    } elseif (
-        $name === 'police_stations'
-    ) {
+    } elseif ($tableName === 'police_stations') {
 
-        $policeStations =
-            $table['data'];
+        $policeStations = is_array($table['data'])
+            ? $table['data']
+            : [];
     }
 }
 
@@ -227,7 +350,7 @@ echo "Upazilas: "
     . count($upazilas)
     . "\n";
 
-echo "Police stations: "
+echo "Police stations in JSON: "
     . count($policeStations)
     . "\n\n";
 
@@ -237,12 +360,17 @@ if (
     !$districts ||
     !$upazilas
 ) {
-
     die(
-        "Expected divisions/districts/upazilas data পাওয়া যায়নি।"
+        "Expected divisions/districts/upazilas data পাওয়া যায়নি.\n"
     );
 }
 
+
+/*
+|--------------------------------------------------------------------------
+| Start transaction
+|--------------------------------------------------------------------------
+*/
 
 $pdo->beginTransaction();
 
@@ -250,713 +378,485 @@ try {
 
     /*
     |--------------------------------------------------------------------------
-    | Divisions
+    | 1. Divisions
     |--------------------------------------------------------------------------
     */
 
-    $divisionInsert =
-        $pdo->prepare(
-            "
-            INSERT INTO divisions
-                (
-                    source_id,
-                    name,
-                    slug,
-                    bn_name,
-                    latitude,
-                    longitude
-                )
+    $divisionInsert = $pdo->prepare("
+        INSERT INTO divisions
+        (
+            id,
+            source_id,
+            name,
+            bn_name,
+            slug,
+            latitude,
+            longitude
+        )
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?
+        )
+        ON DUPLICATE KEY UPDATE
+            source_id = VALUES(source_id),
+            name = VALUES(name),
+            bn_name = VALUES(bn_name),
+            slug = VALUES(slug),
+            latitude = VALUES(latitude),
+            longitude = VALUES(longitude)
+    ");
 
-            VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                )
+    $divisionIds = [];
 
-            ON DUPLICATE KEY UPDATE
-                name = VALUES(name),
-                slug = VALUES(slug),
-                bn_name = VALUES(bn_name),
-                latitude = VALUES(latitude),
-                longitude = VALUES(longitude)
-            "
+    $divisionBySlug = $pdo->query(
+        'SELECT id, slug FROM divisions'
+    )->fetchAll();
+
+    $divisionDatabaseIds = [];
+
+    foreach ($divisionBySlug as $divisionRow) {
+        $divisionDatabaseIds[
+            strtolower((string) $divisionRow['slug'])
+        ] = (int) $divisionRow['id'];
+    }
+
+    $divisionCount = 0;
+
+
+    foreach ($divisions as $row) {
+
+        $id = (int)(
+            $row['id'] ?? 0
+        );
+
+        $name = trim(
+            (string)(
+                $row['name'] ?? ''
+            )
+        );
+
+        $bnName = trim(
+            (string)(
+                $row['bn_name'] ?? ''
+            )
         );
 
 
-    foreach (
-        $divisions as $row
-    ) {
-
-        $name =
-            trim(
-                (string)
-                (
-                    $row['name']
-                    ?? ''
-                )
-            );
-
-        $bnName =
-            trim(
-                (string)
-                (
-                    $row['bn_name']
-                    ?? ''
-                )
-            );
-
-
         if (
+            $id <= 0 ||
             $name === ''
         ) {
             continue;
         }
 
-        $sourceId = (int) ($row['id'] ?? 0);
-        if ($sourceId <= 0) {
+
+        $slug = getSlug(
+            $row,
+            'division',
+            $id
+        );
+
+        $databaseId =
+            $divisionDatabaseIds[strtolower($slug)]
+            ?? $id;
+
+
+        $divisionInsert->execute([
+            $databaseId,
+            $id,
+            $name,
+            $bnName !== '' ? $bnName : null,
+            $slug,
+            getLatitude($row),
+            getLongitude($row)
+        ]);
+
+
+        $divisionIds[$id] = $databaseId;
+
+        $divisionCount++;
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | 2. Districts
+    |--------------------------------------------------------------------------
+    */
+
+    $districtInsert = $pdo->prepare("
+        INSERT INTO districts
+        (
+            id,
+            source_id,
+            division_id,
+            name,
+            bn_name,
+            slug,
+            latitude,
+            longitude
+        )
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?
+        )
+        ON DUPLICATE KEY UPDATE
+            source_id = VALUES(source_id),
+            division_id = VALUES(division_id),
+            name = VALUES(name),
+            bn_name = VALUES(bn_name),
+            slug = VALUES(slug),
+            latitude = VALUES(latitude),
+            longitude = VALUES(longitude)
+    ");
+
+
+    $districtIds = [];
+
+    $districtCount = 0;
+
+
+    foreach ($districts as $row) {
+
+        $id = (int)(
+            $row['id'] ?? 0
+        );
+
+        $divisionId = (int)(
+            $row['division_id'] ?? 0
+        );
+
+        $name = trim(
+            (string)(
+                $row['name'] ?? ''
+            )
+        );
+
+        $bnName = trim(
+            (string)(
+                $row['bn_name'] ?? ''
+            )
+        );
+
+
+        if (
+            $id <= 0 ||
+            $divisionId <= 0 ||
+            $name === ''
+        ) {
             continue;
         }
 
 
         /*
-         * Use English name as canonical name.
+         * Make sure parent division exists.
          */
 
-        $slug =
-            slugify(
-                $name
+        if (
+            !isset(
+                $divisionIds[$divisionId]
+            )
+        ) {
+            throw new RuntimeException(
+                "District {$id} references missing division {$divisionId}."
             );
+        }
 
 
-        $divisionInsert->execute([
-            $sourceId,
-            $name,
-            $slug,
-            $bnName !== '' ? $bnName : null,
-            isset($row['lat']) ? (float) $row['lat'] : null,
-            isset($row['lng']) ? (float) $row['lng'] : null
-        ]);
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Districts
-    |--------------------------------------------------------------------------
-    */
-
-    $districtInsert =
-        $pdo->prepare(
-            "
-            INSERT INTO districts
-                (
-                    source_id,
-                    division_id,
-                    name,
-                    slug,
-                    bn_name,
-                    latitude,
-                    longitude
-                )
-
-            VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                )
-
-            ON DUPLICATE KEY UPDATE
-                division_id =
-                    VALUES(division_id),
-                name = VALUES(name),
-                slug = VALUES(slug),
-                bn_name = VALUES(bn_name),
-                latitude = VALUES(latitude),
-                longitude = VALUES(longitude)
-            "
+        $slug = getSlug(
+            $row,
+            'district',
+            $id
         );
 
 
-    foreach (
-        $districts as $row
-    ) {
+        $latitude = getLatitude($row);
 
-        $name =
-            trim(
-                (string)
-                (
-                    $row['name']
-                    ?? ''
-                )
-            );
-
-
-        $divisionId =
-            (int)
-            (
-                $row['division_id']
-                ?? 0
-            );
-
-
-        if (
-            $name === '' ||
-            $divisionId <= 0
-        ) {
-            continue;
-        }
-
-        $sourceId = (int) ($row['id'] ?? 0);
-        if ($sourceId <= 0) {
-            continue;
-        }
-
-        $sourceDivisionName =
-            trim(
-                (string)
-                (
-                    $sourceDivisionsById[$divisionId]
-                    ?? ''
-                )
-            );
-
-        $division = null;
-
-        if (
-            $sourceDivisionName !== ''
-        ) {
-            $divisionStmt =
-                $pdo->prepare(
-                    "
-                    SELECT id
-
-                    FROM divisions
-
-                    WHERE source_id = ?
-
-                    LIMIT 1
-                    "
-                );
-
-            $divisionStmt->execute([
-                $divisionId
-            ]);
-
-            $division =
-                $divisionStmt->fetch();
-        }
-
-        if (
-            !$division
-        ) {
-            $parent =
-                $pdo->prepare(
-                    "
-                    SELECT id
-
-                    FROM divisions
-
-                    WHERE id = ?
-
-                    LIMIT 1
-                    "
-                );
-
-            $parent->execute([
-                $divisionId
-            ]);
-
-            $division =
-                $parent->fetch();
-        }
-
-        if (!$division) {
-            continue;
-        }
-
-
-        $slug =
-            slugify(
-                $name
-            );
+        $longitude = getLongitude($row);
 
 
         $districtInsert->execute([
-            $sourceId,
-            (int)
-            $division['id'],
-
+            $id,
+            $id,
+            $divisionIds[$divisionId],
             $name,
-
+            $bnName !== '' ? $bnName : null,
             $slug,
-            isset($row['bn_name']) ? trim((string) $row['bn_name']) : null,
-            isset($row['lat']) ? (float) $row['lat'] : null,
-            isset($row['lng']) ? (float) $row['lng'] : null
-        ]);
-    }
-
-    $districtStationInsert =
-        $pdo->prepare(
-            "
-            INSERT INTO police_stations
-                (
-                    district_id,
-                    name,
-                    latitude,
-                    longitude
-                )
-
-            VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                )
-
-            ON DUPLICATE KEY UPDATE
-                name = VALUES(name),
-                latitude = VALUES(latitude),
-                longitude = VALUES(longitude)
-            "
-        );
-
-    if ($policeStations) {
-        foreach (
-            $districts as $row
-        ) {
-
-        $districtName =
-            trim(
-                (string)
-                (
-                    $row['name']
-                    ?? ''
-                )
-            );
-
-        if (
-            $districtName === ''
-        ) {
-            continue;
-        }
-
-        $districtStmt =
-            $pdo->prepare(
-                "
-                SELECT id
-
-                FROM districts
-
-                WHERE name = ?
-
-                LIMIT 1
-                "
-            );
-
-        $districtStmt->execute([
-            $districtName
+            $latitude,
+            $longitude
         ]);
 
-        $district =
-            $districtStmt->fetch();
 
-        if (!$district) {
-            continue;
-        }
+        $districtIds[$id] = $id;
 
-        $stationName =
-            $districtName . ' থানা';
-
-        $lat =
-            isset($row['lat'])
-                ? (float) $row['lat']
-                : null;
-
-        $lng =
-            isset($row['lng'])
-                ? (float) $row['lng']
-                : null;
-
-            $districtStationInsert->execute([
-                (int) $district['id'],
-                $stationName,
-                $lat,
-                $lng
-            ]);
-        }
+        $districtCount++;
     }
 
 
     /*
     |--------------------------------------------------------------------------
-    | Upazilas
+    | 3. Upazilas
     |--------------------------------------------------------------------------
     */
 
-    $upazilaInsert =
-        $pdo->prepare(
-            "
-            INSERT INTO upazilas
-                (
-                    source_id,
-                    district_id,
-                    name,
-                    bn_name,
-                    slug,
-                    latitude,
-                    longitude
-                )
+    $upazilaInsert = $pdo->prepare("
+        INSERT INTO upazilas
+        (
+            id,
+            source_id,
+            district_id,
+            name,
+            bn_name,
+            slug,
+            latitude,
+            longitude
+        )
+        VALUES
+        (
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?
+        )
+        ON DUPLICATE KEY UPDATE
+            source_id = VALUES(source_id),
+            district_id = VALUES(district_id),
+            name = VALUES(name),
+            bn_name = VALUES(bn_name),
+            slug = VALUES(slug),
+            latitude = VALUES(latitude),
+            longitude = VALUES(longitude)
+    ");
 
-            VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                )
 
-            ON DUPLICATE KEY UPDATE
+    $upazilaCount = 0;
 
-                name =
-                    VALUES(name),
 
-                bn_name =
-                    VALUES(bn_name),
+    foreach ($upazilas as $row) {
 
-                latitude =
-                    VALUES(latitude),
-
-                longitude =
-                    VALUES(longitude)
-            "
+        $id = (int)(
+            $row['id'] ?? 0
         );
 
+        $districtId = (int)(
+            $row['district_id'] ?? 0
+        );
 
-    foreach (
-        $upazilas as $row
-    ) {
-
-        $name =
-            trim(
-                (string)
-                (
-                    $row['name']
-                    ?? ''
-                )
-            );
-
-        $bnName =
-            trim(
-                (string)
-                (
-                    $row['bn_name']
-                    ?? ''
-                )
-            );
-
-
-        $sourceDistrictId =
-            (int)
-            (
-                $row['district_id']
-                ?? 0
-            );
-
-
-        $lat =
-            isset(
-                $row['lat']
+        $name = trim(
+            (string)(
+                $row['name'] ?? ''
             )
-                ? (float)
-                    $row['lat']
-                : null;
+        );
 
-
-        $lng =
-            isset(
-                $row['lng']
+        $bnName = trim(
+            (string)(
+                $row['bn_name'] ?? ''
             )
-                ? (float)
-                    $row['lng']
-                : null;
+        );
 
 
         if (
-            $name === '' ||
-            $sourceDistrictId <= 0
+            $id <= 0 ||
+            $districtId <= 0 ||
+            $name === ''
         ) {
             continue;
         }
 
 
-        $districtStmt =
-            $pdo->prepare(
-                "
-                SELECT id
+        /*
+         * Make sure parent district exists.
+         */
 
-                FROM districts
-
-                WHERE source_id = ?
-
-                LIMIT 1
-                "
+        if (
+            !isset(
+                $districtIds[$districtId]
+            )
+        ) {
+            throw new RuntimeException(
+                "Upazila {$id} references missing district {$districtId}."
             );
-
-        $districtStmt->execute([
-            $sourceDistrictId
-        ]);
-
-        $district =
-            $districtStmt->fetch();
-
-
-        if (!$district) {
-            continue;
         }
 
 
-        $slug =
-            slugify(
-                $name
-            );
+        $slug = getSlug(
+            $row,
+            'upazila',
+            $id
+        );
+
+
+        $latitude = getLatitude($row);
+
+        $longitude = getLongitude($row);
+
+        $databaseDistrictId = $districtIds[$districtId];
+
+        $existingUpazilaStmt = $pdo->prepare(
+            '
+            SELECT id
+            FROM upazilas
+            WHERE district_id = ?
+              AND slug = ?
+            LIMIT 1
+            '
+        );
+
+        $existingUpazilaStmt->execute([
+            $databaseDistrictId,
+            $slug
+        ]);
+
+        $existingUpazilaId =
+            $existingUpazilaStmt->fetchColumn();
+
+        $databaseUpazilaId =
+            $existingUpazilaId !== false
+                ? (int) $existingUpazilaId
+                : $id;
 
 
         $upazilaInsert->execute([
-
-            (int) ($row['id'] ?? 0),
-
-            (int)
-            $district['id'],
-
+            $databaseUpazilaId,
+            $id,
+            $databaseDistrictId,
             $name,
-
             $bnName !== ''
                 ? $bnName
                 : null,
-
             $slug,
-
-            $lat,
-
-            $lng
+            $latitude,
+            $longitude
         ]);
-    }
-
-    $stationInsert =
-        $pdo->prepare(
-            "
-            INSERT INTO police_stations
-                (
-                    district_id,
-                    name,
-                    latitude,
-                    longitude
-                )
-
-            VALUES
-                (
-                    ?,
-                    ?,
-                    ?,
-                    ?
-                )
-
-            ON DUPLICATE KEY UPDATE
-                name = VALUES(name),
-                latitude = VALUES(latitude),
-                longitude = VALUES(longitude)
-            "
-        );
 
 
-    if (
-        $policeStations
-    ) {
-
-        foreach (
-            $policeStations as $row
-        ) {
-
-            $name =
-                trim(
-                    (string)
-                    (
-                        $row['name']
-                        ?? ''
-                    )
-                );
-
-            $districtName =
-                trim(
-                    (string)
-                    (
-                        $row['district_name']
-                        ?? ''
-                    )
-                );
-
-            if (
-                $name === ''
-            ) {
-                continue;
-            }
-
-            $districtId = null;
-
-            if (
-                $districtName !== ''
-            ) {
-
-                $districtStmt =
-                    $pdo->prepare(
-                        "
-                        SELECT id
-
-                        FROM districts
-
-                        WHERE name = ?
-
-                        LIMIT 1
-                        "
-                    );
-
-                $districtStmt->execute([
-                    $districtName
-                ]);
-
-                $district =
-                    $districtStmt->fetch();
-
-                if ($district) {
-                    $districtId =
-                        (int)
-                        $district['id'];
-                }
-            }
-
-            if (
-                $districtId === null
-            ) {
-                continue;
-            }
-
-            $lat =
-                isset(
-                    $row['lat']
-                )
-                    ? (float) $row['lat']
-                    : null;
-
-            $lng =
-                isset(
-                    $row['lng']
-                )
-                    ? (float) $row['lng']
-                    : null;
-
-            $stationInsert->execute([
-                $districtId,
-                $name,
-                $lat,
-                $lng
-            ]);
-        }
-
-    } else {
-
-        $upazilaStations =
-            $pdo->query(
-                "
-                SELECT
-                    district_id,
-                    name,
-                    latitude,
-                    longitude
-
-                FROM upazilas
-                "
-            );
-
-        foreach (
-            $upazilaStations as $upazilaStation
-        ) {
-            $stationInsert->execute([
-                (int) $upazilaStation['district_id'],
-                (string) $upazilaStation['name'],
-                $upazilaStation['latitude'] !== null
-                    ? (float) $upazilaStation['latitude']
-                    : null,
-                $upazilaStation['longitude'] !== null
-                    ? (float) $upazilaStation['longitude']
-                    : null
-            ]);
-        }
-
+        $upazilaCount++;
     }
 
 
-    $locationUpdate =
-        $pdo->prepare(
-            "
-            UPDATE locations l
-
-            SET l.police_station_id = (
-                SELECT ps.id
-                FROM police_stations ps
-                WHERE ps.latitude IS NOT NULL
-                  AND ps.longitude IS NOT NULL
-                ORDER BY (
-                    6371000 * 2 * ASIN(
-                        SQRT(
-                            POWER(SIN(RADIANS(ps.latitude - l.latitude) / 2), 2)
-                            + COS(RADIANS(ps.latitude))
-                            * COS(RADIANS(l.latitude))
-                            * POWER(SIN(RADIANS(ps.longitude - l.longitude) / 2), 2)
-                        )
-                    )
-                ) ASC
-                LIMIT 1
-            )
-
-            WHERE l.police_station_id IS NULL
-            "
-        );
-
-    $locationUpdate->execute();
-
+    /*
+    |--------------------------------------------------------------------------
+    | Commit
+    |--------------------------------------------------------------------------
+    */
 
     $pdo->commit();
 
 
-    echo "\nImport completed successfully.\n";
+    /*
+    |--------------------------------------------------------------------------
+    | Verification
+    |--------------------------------------------------------------------------
+    */
 
-} catch (
-    Throwable $e
-) {
+    $divisionDbCount = (int)$pdo
+        ->query(
+            "SELECT COUNT(*) FROM divisions"
+        )
+        ->fetchColumn();
+
+
+    $districtDbCount = (int)$pdo
+        ->query(
+            "SELECT COUNT(*) FROM districts"
+        )
+        ->fetchColumn();
+
+
+    $upazilaDbCount = (int)$pdo
+        ->query(
+            "SELECT COUNT(*) FROM upazilas"
+        )
+        ->fetchColumn();
+
+
+    $policeStationDbCount = (int)$pdo
+        ->query(
+            "SELECT COUNT(*) FROM police_stations"
+        )
+        ->fetchColumn();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Output
+    |--------------------------------------------------------------------------
+    */
+
+    echo "Import completed successfully.\n\n";
+
+
+    echo "Processed:\n";
+
+    echo "  Divisions: "
+        . $divisionCount
+        . "\n";
+
+    echo "  Districts: "
+        . $districtCount
+        . "\n";
+
+    echo "  Upazilas: "
+        . $upazilaCount
+        . "\n\n";
+
+
+    echo "Database totals:\n";
+
+    echo "  Divisions: "
+        . $divisionDbCount
+        . "\n";
+
+    echo "  Districts: "
+        . $districtDbCount
+        . "\n";
+
+    echo "  Upazilas: "
+        . $upazilaDbCount
+        . "\n";
+
+    echo "  Police stations: "
+        . $policeStationDbCount
+        . "\n\n";
+
+
+    echo "Hierarchy:\n";
+
+    echo "Division → District → Upazila\n\n";
+
+
+    echo "No fake police stations were created.\n";
+
+} catch (Throwable $e) {
 
     if (
         $pdo->inTransaction()
     ) {
-
         $pdo->rollBack();
     }
 
 
     echo "\nImport failed:\n";
 
-    echo $e->getMessage();
-
+    echo $e->getMessage() . "\n";
 }
+
+
+echo "</pre>";

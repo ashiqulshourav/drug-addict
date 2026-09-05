@@ -6,6 +6,154 @@ require_once __DIR__ . '/../config/database.php';
 
 $pdo = db();
 
+$hasColumn = static function (
+    PDO $pdo,
+    string $table,
+    string $column
+): bool {
+    $stmt = $pdo->prepare(
+        "
+        SELECT COUNT(*)
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = ?
+          AND COLUMN_NAME = ?
+        "
+    );
+
+    $stmt->execute([
+        $table,
+        $column
+    ]);
+
+    return (int) $stmt->fetchColumn() > 0;
+};
+
+if (!$hasColumn($pdo, 'divisions', 'source_id')) {
+    $pdo->exec(
+        'ALTER TABLE divisions ADD source_id SMALLINT UNSIGNED NULL AFTER id'
+    );
+    $pdo->exec(
+        'UPDATE divisions SET source_id = id WHERE source_id IS NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE divisions MODIFY source_id SMALLINT UNSIGNED NOT NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE divisions ADD UNIQUE KEY uq_division_source_id (source_id)'
+    );
+}
+
+if (!$hasColumn($pdo, 'divisions', 'bn_name')) {
+    $pdo->exec(
+        'ALTER TABLE divisions ADD bn_name VARCHAR(80) NULL AFTER name'
+    );
+}
+
+if (!$hasColumn($pdo, 'divisions', 'latitude')) {
+    $pdo->exec(
+        'ALTER TABLE divisions ADD latitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'divisions', 'longitude')) {
+    $pdo->exec(
+        'ALTER TABLE divisions ADD longitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'districts', 'source_id')) {
+    $pdo->exec(
+        'ALTER TABLE districts ADD source_id SMALLINT UNSIGNED NULL AFTER id'
+    );
+    $pdo->exec(
+        'UPDATE districts SET source_id = id WHERE source_id IS NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE districts MODIFY source_id SMALLINT UNSIGNED NOT NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE districts ADD UNIQUE KEY uq_district_source_id (source_id)'
+    );
+}
+
+if (!$hasColumn($pdo, 'districts', 'bn_name')) {
+    $pdo->exec(
+        'ALTER TABLE districts ADD bn_name VARCHAR(80) NULL AFTER name'
+    );
+}
+
+if (!$hasColumn($pdo, 'districts', 'latitude')) {
+    $pdo->exec(
+        'ALTER TABLE districts ADD latitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'districts', 'longitude')) {
+    $pdo->exec(
+        'ALTER TABLE districts ADD longitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'upazilas', 'source_id')) {
+    $pdo->exec(
+        'ALTER TABLE upazilas ADD source_id INT UNSIGNED NULL AFTER id'
+    );
+    $pdo->exec(
+        'UPDATE upazilas SET source_id = id WHERE source_id IS NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE upazilas MODIFY source_id INT UNSIGNED NOT NULL'
+    );
+    $pdo->exec(
+        'ALTER TABLE upazilas ADD UNIQUE KEY uq_upazila_source_id (source_id)'
+    );
+}
+
+if (!$hasColumn($pdo, 'upazilas', 'latitude')) {
+    $pdo->exec(
+        'ALTER TABLE upazilas ADD latitude DECIMAL(10,7) NULL'
+    );
+}
+
+if (!$hasColumn($pdo, 'upazilas', 'longitude')) {
+    $pdo->exec(
+        'ALTER TABLE upazilas ADD longitude DECIMAL(10,7) NULL'
+    );
+}
+
+$pdo->exec(
+    "
+    ALTER TABLE divisions
+        CONVERT TO CHARACTER SET utf8mb4
+        COLLATE utf8mb4_unicode_ci
+    "
+);
+
+$pdo->exec(
+    "
+    ALTER TABLE districts
+        CONVERT TO CHARACTER SET utf8mb4
+        COLLATE utf8mb4_unicode_ci
+    "
+);
+
+$pdo->exec(
+    "
+    ALTER TABLE upazilas
+        CONVERT TO CHARACTER SET utf8mb4
+        COLLATE utf8mb4_unicode_ci
+    "
+);
+
+$pdo->exec(
+    'UPDATE divisions SET source_id = 1000 + id'
+);
+
+$pdo->exec(
+    'UPDATE upazilas SET source_id = 1000000 + id'
+);
+
 $jsonFile = __DIR__ . '/../data/db_geocode.json';
 
 if (!file_exists($jsonFile)) {
@@ -238,22 +386,45 @@ try {
         INSERT INTO divisions
         (
             id,
+            source_id,
             name,
-            slug
+            bn_name,
+            slug,
+            latitude,
+            longitude
         )
         VALUES
         (
             ?,
             ?,
+            ?,
+            ?,
+            ?,
+            ?,
             ?
         )
         ON DUPLICATE KEY UPDATE
+            source_id = VALUES(source_id),
             name = VALUES(name),
-            slug = VALUES(slug)
+            bn_name = VALUES(bn_name),
+            slug = VALUES(slug),
+            latitude = VALUES(latitude),
+            longitude = VALUES(longitude)
     ");
 
-
     $divisionIds = [];
+
+    $divisionBySlug = $pdo->query(
+        'SELECT id, slug FROM divisions'
+    )->fetchAll();
+
+    $divisionDatabaseIds = [];
+
+    foreach ($divisionBySlug as $divisionRow) {
+        $divisionDatabaseIds[
+            strtolower((string) $divisionRow['slug'])
+        ] = (int) $divisionRow['id'];
+    }
 
     $divisionCount = 0;
 
@@ -267,6 +438,12 @@ try {
         $name = trim(
             (string)(
                 $row['name'] ?? ''
+            )
+        );
+
+        $bnName = trim(
+            (string)(
+                $row['bn_name'] ?? ''
             )
         );
 
@@ -285,15 +462,23 @@ try {
             $id
         );
 
+        $databaseId =
+            $divisionDatabaseIds[strtolower($slug)]
+            ?? $id;
+
 
         $divisionInsert->execute([
+            $databaseId,
             $id,
             $name,
-            $slug
+            $bnName !== '' ? $bnName : null,
+            $slug,
+            getLatitude($row),
+            getLongitude($row)
         ]);
 
 
-        $divisionIds[$id] = true;
+        $divisionIds[$id] = $databaseId;
 
         $divisionCount++;
     }
@@ -309,8 +494,10 @@ try {
         INSERT INTO districts
         (
             id,
+            source_id,
             division_id,
             name,
+            bn_name,
             slug,
             latitude,
             longitude
@@ -322,11 +509,15 @@ try {
             ?,
             ?,
             ?,
+            ?,
+            ?,
             ?
         )
         ON DUPLICATE KEY UPDATE
+            source_id = VALUES(source_id),
             division_id = VALUES(division_id),
             name = VALUES(name),
+            bn_name = VALUES(bn_name),
             slug = VALUES(slug),
             latitude = VALUES(latitude),
             longitude = VALUES(longitude)
@@ -351,6 +542,12 @@ try {
         $name = trim(
             (string)(
                 $row['name'] ?? ''
+            )
+        );
+
+        $bnName = trim(
+            (string)(
+                $row['bn_name'] ?? ''
             )
         );
 
@@ -393,15 +590,17 @@ try {
 
         $districtInsert->execute([
             $id,
-            $divisionId,
+            $id,
+            $divisionIds[$divisionId],
             $name,
+            $bnName !== '' ? $bnName : null,
             $slug,
             $latitude,
             $longitude
         ]);
 
 
-        $districtIds[$id] = true;
+        $districtIds[$id] = $id;
 
         $districtCount++;
     }
@@ -417,6 +616,7 @@ try {
         INSERT INTO upazilas
         (
             id,
+            source_id,
             district_id,
             name,
             bn_name,
@@ -432,9 +632,11 @@ try {
             ?,
             ?,
             ?,
+            ?,
             ?
         )
         ON DUPLICATE KEY UPDATE
+            source_id = VALUES(source_id),
             district_id = VALUES(district_id),
             name = VALUES(name),
             bn_name = VALUES(bn_name),
@@ -505,10 +707,36 @@ try {
 
         $longitude = getLongitude($row);
 
+        $databaseDistrictId = $districtIds[$districtId];
+
+        $existingUpazilaStmt = $pdo->prepare(
+            '
+            SELECT id
+            FROM upazilas
+            WHERE district_id = ?
+              AND slug = ?
+            LIMIT 1
+            '
+        );
+
+        $existingUpazilaStmt->execute([
+            $databaseDistrictId,
+            $slug
+        ]);
+
+        $existingUpazilaId =
+            $existingUpazilaStmt->fetchColumn();
+
+        $databaseUpazilaId =
+            $existingUpazilaId !== false
+                ? (int) $existingUpazilaId
+                : $id;
+
 
         $upazilaInsert->execute([
+            $databaseUpazilaId,
             $id,
-            $districtId,
+            $databaseDistrictId,
             $name,
             $bnName !== ''
                 ? $bnName

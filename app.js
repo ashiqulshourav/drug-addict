@@ -16,6 +16,7 @@ const DEFAULT_ZOOM = 12;
 const LOCATION_API = "api/locations.php";
 const STATISTICS_API = "api/statistics.php";
 const REPORT_API = "api/report.php";
+const REPORTS_API = "api/reports.php";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
@@ -36,6 +37,7 @@ let heroMapMarkers = [];
 
 let selectedMapMarker = null;
 let userLocationMarker = null;
+let mainUserLocationMarker = null;
 let locationPickerMarker = null;
 
 let selectedMapLocation = null;
@@ -69,6 +71,10 @@ let contactInputWrapper = null;
 let contactInfo = null;
 
 let submitButton = null;
+let reportDivisionSelect = null;
+let stationDivision = "all";
+let reportDistrictSelect = null;
+let stationDistrict = "all";
 
 
 /* =========================================================
@@ -78,41 +84,64 @@ let submitButton = null;
 function cacheDom() {
 
     reportModal =
-        document.getElementById("reportModal");
+        document.getElementById(
+            "reportModal"
+        );
 
     reportForm =
-        document.getElementById("reportForm");
+        document.getElementById(
+            "reportForm"
+        );
 
     latitudeInput =
-        document.getElementById("latitude");
+        document.getElementById(
+            "latitude"
+        );
 
     longitudeInput =
-        document.getElementById("longitude");
+        document.getElementById(
+            "longitude"
+        );
 
     selectedLocation =
-        document.getElementById("selectedLocation");
+        document.getElementById(
+            "selectedLocation"
+        );
 
     imageInput =
-        document.getElementById("reportImage");
+        document.getElementById(
+            "reportImage"
+        );
 
     imagePreview =
-        document.getElementById("imagePreview");
+        document.getElementById(
+            "imagePreview"
+        );
 
     previewImage =
-        document.getElementById("previewImage");
+        document.getElementById(
+            "previewImage"
+        );
 
     imageName =
-        document.getElementById("imageName");
-
+        document.getElementById(
+            "imageName"
+        );
 
     mapSelectModal =
-        document.getElementById("mapSelectModal");
+        document.getElementById(
+            "mapSelectModal"
+        );
 
     openMapSelectBtn =
-        document.getElementById("openMapSelectBtn");
+        document.getElementById(
+            "openMapSelectBtn"
+        );
 
     closeMapSelectBtn =
-        document.getElementById("closeMapSelectBtn");
+        document.getElementById(
+            "closeMapSelectBtn"
+        );
 
     confirmMapLocationBtn =
         document.getElementById(
@@ -143,6 +172,16 @@ function cacheDom() {
     contactInfo =
         document.getElementById(
             "contactInfo"
+        );
+
+    reportDivisionSelect =
+        document.getElementById(
+            "reportDivisionSelect"
+        );
+
+    reportDistrictSelect =
+        document.getElementById(
+            "reportDistrictSelect"
         );
 
 
@@ -186,7 +225,7 @@ function numberValue(value) {
 function formatNumber(value) {
 
     return numberValue(value)
-        .toLocaleString("bn-BD");
+    .toLocaleString("en-US");
 }
 
 
@@ -204,49 +243,49 @@ function getTypeLabel(type) {
         return "মাদক সেবন";
     }
 
-    return "সেবন / বেচাকেনা";
+    return "উভয়";
 }
 
 
 function getTypeBackground(type) {
 
     if (type === "sale") {
-        return "#fff0e6";
+        return "#fee2e2";
     }
 
     if (type === "use") {
-        return "#ffebeb";
+        return "#fef3c7";
     }
 
-    return "#f1eafe";
+    return "#dcfce7";
 }
 
 
 function getTypeTextColor(type) {
 
     if (type === "sale") {
-        return "#c2410c";
+        return "#b91c1c";
     }
 
     if (type === "use") {
-        return "#c62828";
+        return "#a16207";
     }
 
-    return "#6d28d9";
+    return "#15803d";
 }
 
 
 function getTypeColor(type) {
 
     if (type === "sale") {
-        return "#f97316";
-    }
-
-    if (type === "use") {
         return "#ef4444";
     }
 
-    return "#8b5cf6";
+    if (type === "use") {
+        return "#facc15";
+    }
+
+    return "#22c55e";
 }
 
 
@@ -285,13 +324,7 @@ function createMarkerIcon(type) {
     });
 }
 
-
-/* =========================================================
-   MAIN MAP
-   ========================================================= */
-
 function initMap() {
-
     const mapElement =
         document.getElementById("map");
 
@@ -340,7 +373,7 @@ function initMap() {
             maxZoom: 19,
 
             attribution:
-                "&copy; OpenStreetMap contributors"
+                "&copy; OpenStreetMap"
         }
     ).addTo(map);
 
@@ -437,7 +470,7 @@ function initHeroMap() {
             maxZoom: 19,
 
             attribution:
-                "&copy; OpenStreetMap contributors"
+                "&copy; OpenStreetMap"
         }
     ).addTo(heroMap);
 
@@ -560,14 +593,17 @@ function renderMarkers() {
 
 
             const stationText =
-                location.station ||
-                "থানা নির্ধারণ করা হয়নি";
+                            location.station || "Station unavailable";
 
 
             const reportCount =
                 numberValue(
                     location.reports
                 );
+
+            const detailUrl =
+                "reports.html?location=" +
+                encodeURIComponent(location.id);
 
 
             marker.bindPopup(`
@@ -619,6 +655,10 @@ function renderMarkers() {
                         )}
                     </strong>
 
+                    <p style="margin:5px 0 0;color:#666;font-size:10px;line-height:1.5;">
+                        ${escapeHtml(location.description || "বিস্তারিত তথ্য দেওয়া হয়নি।")}
+                    </p>
+
 
                     <span
                         style="
@@ -628,49 +668,10 @@ function renderMarkers() {
                             margin-top:5px;
                         "
                     >
-                        ${escapeHtml(
-                            stationText
-                        )}
+                            ${escapeHtml(stationText)} .
+                            ${escapeHtml(location.district || "District unavailable")} .
+                            ${escapeHtml(location.division || "Division unavailable")}
                     </span>
-
-
-                    ${
-                        location.district
-                            ? `
-                                <span
-                                    style="
-                                        display:block;
-                                        color:#999;
-                                        font-size:10px;
-                                        margin-top:2px;
-                                    "
-                                >
-                                    ${escapeHtml(
-                                        location.district
-                                    )}
-                                </span>
-                              `
-                            : ""
-                    }
-
-                    ${
-                        location.upazila
-                            ? `
-                                <span
-                                    style="
-                                        display:block;
-                                        color:#999;
-                                        font-size:10px;
-                                        margin-top:2px;
-                                    "
-                                >
-                                    উপজেলা: ${escapeHtml(
-                                        location.upazila
-                                    )}
-                                </span>
-                              `
-                            : ""
-                    }
 
 
                     <div
@@ -689,6 +690,9 @@ function renderMarkers() {
                                 reportCount
                             )}
                         </strong>
+                        <a href="${detailUrl}" style="float:right;color:#5b46e8;font-weight:700;text-decoration:none;">
+                            সব রিপোর্ট দেখুন
+                        </a>
                     </div>
 
                 </div>
@@ -840,10 +844,7 @@ function renderHeroMarkers() {
                             font-size:10px;
                         "
                     >
-                        ${escapeHtml(
-                            location.station ||
-                            "থানা নির্ধারণ করা হয়নি"
-                        )}
+                            ${escapeHtml(location.station || "Station unavailable")}
                     </span>
 
                 </div>
@@ -1016,6 +1017,9 @@ async function loadMapLocations() {
                         numberValue(
                             location.reports
                         ),
+
+                    description:
+                        String(location.description || ""),
 
                     use_count:
                         numberValue(
@@ -1221,7 +1225,8 @@ async function loadBackendData() {
     );
 
 
-    renderStationTable();
+    populateReportDistricts();
+    renderFilteredStations();
 
 
     return result;
@@ -1262,6 +1267,11 @@ function updateStatisticsUI(stats) {
     const heroPoliceStations =
         document.getElementById(
             "heroPoliceStations"
+        );
+
+    const heroTotalReports =
+        document.getElementById(
+            "heroTotalReports"
         );
 
 
@@ -1317,6 +1327,11 @@ function updateStatisticsUI(stats) {
                 stats.total_stations
             );
     }
+
+    if (heroTotalReports) {
+        heroTotalReports.textContent =
+            formatNumber(stats.total_reports);
+    }
 }
 
 
@@ -1324,7 +1339,7 @@ function updateStatisticsUI(stats) {
    MAIN MAP CURRENT LOCATION
    ========================================================= */
 
-function locateUserOnMainMap() {
+function locateUser(targetId = "map") {
 
     if (
         !navigator.geolocation
@@ -1339,21 +1354,20 @@ function locateUserOnMainMap() {
     }
 
 
-    const button =
-        document.getElementById(
-            "locateMeBtn"
-        );
+    const button = document.getElementById(
+        targetId === "heroMap" ? "locateMeBtn" : "mapLocateBtn"
+    );
 
 
     if (button) {
+        console.log(button)
 
         button.disabled = true;
 
         button.dataset.originalText =
             button.innerHTML;
 
-        button.innerHTML =
-            "◎ লোকেশন নেওয়া হচ্ছে...";
+        button.innerHTML = button.id !== "mapLocateBtn" ? "◎ লোকেশন নেওয়া হচ্ছে..." : "◎";
     }
 
 
@@ -1485,6 +1499,25 @@ function locateUserOnMainMap() {
                 }
             );
 
+            if (map) {
+                if (mainUserLocationMarker) {
+                    map.removeLayer(mainUserLocationMarker);
+                }
+
+                mainUserLocationMarker = L.circleMarker(
+                    [lat, lng],
+                    {
+                        radius: 9,
+                        color: "#ffffff",
+                        weight: 3,
+                        fillColor: "#5b46e8",
+                        fillOpacity: 1
+                    }
+                ).addTo(map);
+
+                map.setView([lat, lng], 16, {animate: true});
+            }
+
 
             setTimeout(
                 function() {
@@ -1517,11 +1550,18 @@ function locateUserOnMainMap() {
 
             restoreLocateButton();
 
+            document.getElementById(targetId)?.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
 
             showToast(
                 "লোকেশন পাওয়া গেছে",
                 "আপনার অবস্থান Hero Map-এ দেখানো হয়েছে।"
             );
+
+            button.disabled = false;
         },
 
 
@@ -1581,6 +1621,14 @@ function locateUserOnMainMap() {
             maximumAge: 30000
         }
     );
+}
+
+function locateUserOnMainMap() {
+    locateUser("map");
+}
+
+function locateUserOnHeroMap() {
+    locateUser("heroMap");
 }
 
 function restoreLocateButton() {
@@ -1938,7 +1986,7 @@ function initLocationPickerMap() {
             maxZoom: 19,
 
             attribution:
-                "&copy; OpenStreetMap contributors"
+                "&copy; OpenStreetMap"
         }
     ).addTo(
         locationPickerMap
@@ -2473,7 +2521,7 @@ function renderStationTable(
         tbody.innerHTML = `
             <tr>
                 <td
-                    colspan="7"
+                    colspan="6"
                     style="
                         text-align:center;
                         padding:35px;
@@ -2514,13 +2562,6 @@ function renderStationTable(
 
                         <td>
                             ${escapeHtml(
-                                item.station ||
-                                ""
-                            )}
-                        </td>
-
-                        <td>
-                            ${escapeHtml(
                                 item.division ||
                                 ""
                             )}
@@ -2535,7 +2576,7 @@ function renderStationTable(
 
                         <td>
                             ${escapeHtml(
-                                item.upazilas ||
+                                item.station ||
                                 ""
                             )}
                         </td>
@@ -2577,93 +2618,17 @@ function renderStationTable(
 }
 
 
-/* =========================================================
-   STATION SEARCH
-   ========================================================= */
+function renderFilteredStations() {
+    const filtered = stationData
+        .filter(function(item) {
+            return (stationDivision === "all" || item.division_slug === stationDivision) &&
+                (stationDistrict === "all" || String(item.district_id) === stationDistrict);
+        })
+        .sort(function(first, second) {
+            return numberValue(second.total) - numberValue(first.total);
+        });
 
-function initStationSearch() {
-
-    const input =
-        document.getElementById(
-            "stationSearch"
-        );
-
-
-    if (!input) {
-        return;
-    }
-
-
-    input.addEventListener(
-        "input",
-        function(event) {
-
-            const keyword =
-                String(
-                    event.target.value ||
-                    ""
-                )
-                    .trim()
-                    .toLowerCase();
-
-
-            const filtered =
-                stationData.filter(
-                    function(item) {
-
-                        const station =
-                            String(
-                                item.station ||
-                                ""
-                            ).toLowerCase();
-
-
-                        const district =
-                            String(
-                                item.district ||
-                                ""
-                            ).toLowerCase();
-
-
-                        const division =
-                            String(
-                                item.division ||
-                                ""
-                            ).toLowerCase();
-
-                        const upazilas =
-                            String(
-                                item.upazilas ||
-                                ""
-                            ).toLowerCase();
-
-
-                        return (
-                            station.includes(
-                                keyword
-                            ) ||
-
-                            district.includes(
-                                keyword
-                            ) ||
-
-                            upazilas.includes(
-                                keyword
-                            ) ||
-
-                            division.includes(
-                                keyword
-                            )
-                        );
-                    }
-                );
-
-
-            renderStationTable(
-                filtered
-            );
-        }
-    );
+    renderStationTable(filtered);
 }
 
 
@@ -2671,7 +2636,59 @@ function initStationSearch() {
    DIVISION FILTER
    ========================================================= */
 
-function initDivisionFilter() {}
+function initDivisionFilter() {
+    if (!reportDivisionSelect) {
+        return;
+    }
+
+    stationDivision = reportDivisionSelect.value || "all";
+    stationDistrict = "all";
+
+    if (reportDistrictSelect) {
+        reportDistrictSelect.value = "all";
+    }
+
+    reportDivisionSelect.addEventListener("change", event => {
+        stationDivision = event.target.value || "all";
+        stationDistrict = "all";
+
+        if (reportDistrictSelect) {
+            reportDistrictSelect.value = "all";
+        }
+
+        populateReportDistricts();
+        renderFilteredStations();
+    });
+
+    if (reportDistrictSelect) {
+        reportDistrictSelect.addEventListener("change", event => {
+            stationDistrict = event.target.value || "all";
+            renderFilteredStations();
+        });
+    }
+}
+
+function populateReportDistricts() {
+    if (!reportDistrictSelect) {
+        return;
+    }
+
+    const districts = new Map();
+
+    stationData
+        .filter(item => stationDivision === "all" || item.division_slug === stationDivision)
+        .forEach(item => {
+            if (!districts.has(String(item.district_id))) {
+                districts.set(String(item.district_id), item.district || "District");
+            }
+        });
+
+    reportDistrictSelect.innerHTML = '<option value="all">All districts</option>' +
+        Array.from(districts.entries())
+            .sort((first, second) => first[1].localeCompare(second[1]))
+            .map(([id, name]) => `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`)
+            .join("");
+}
 
 /* ---------------------------------------------------------
    Division statistics filter
@@ -2810,61 +2827,11 @@ async function loadStatisticsByDivision(
 
 
     /*
-     * Replace station data
-     */
-
-    stationData.length = 0;
-
-
-    if (
-      Array.isArray(
-        result.stations
-      )
-    ) {
-
-      stationData.push(
-
-        ...result.stations.map(
-          item => ({
-
-            ...item,
-
-            sale:
-              Number(
-                item.sale
-              ) || 0,
-
-            use:
-              Number(
-                item.use
-              ) || 0,
-
-            total:
-              Number(
-                item.total
-              ) || 0
-          })
-        )
-      );
-    }
-
-
-    /*
      * Update statistics cards
      */
 
     updateStatisticsUI(
       window.safeMapStatistics
-    );
-
-
-    /*
-     * Render all stations
-     * returned by backend
-     */
-
-    renderStationTable(
-      stationData
     );
 
 
@@ -2899,18 +2866,6 @@ if (divisionSelect) {
       const division =
         event.target.value ||
         "all";
-
-
-      /*
-       * Search box clear
-       * কারণ নতুন division select হলে
-       * পুরোনো search result রাখা উচিত নয়।
-       */
-
-      if (stationSearch) {
-
-        stationSearch.value = "";
-      }
 
 
       loadStatisticsByDivision(
@@ -3606,6 +3561,11 @@ function initEventListeners() {
 
     bindClick(
         "locateMeBtn",
+        locateUserOnHeroMap
+    );
+
+    bindClick(
+        "mapLocateBtn",
         locateUserOnMainMap
     );
 
@@ -3829,9 +3789,7 @@ async function initSafeMap() {
 
     initFilters();
 
-    initStationSearch();
-
-    // initDivisionFilter();
+    initDivisionFilter();
 
 
     /*
@@ -3903,7 +3861,8 @@ async function initSafeMap() {
 
     renderHeroMarkers();
 
-    renderStationTable();
+    populateReportDistricts();
+    renderFilteredStations();
 
 
     /*

@@ -90,6 +90,60 @@
         color: #ffffff !important;
         box-shadow: 0 2px 7px rgba(91, 70, 232, 0.22);
       }
+
+      .report-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      @media (max-width: 990px) {
+        .report-table {
+          min-width: 0;
+          width: 100%;
+          table-layout: fixed;
+          font-size: 14px;
+        }
+
+        .report-table th,
+        .report-table td {
+          min-width: 0;
+          overflow-wrap: anywhere;
+          padding: 10px 4px;
+          vertical-align: middle;
+        }
+
+        .report-table th:nth-child(1),
+        .report-table td:nth-child(1),
+        .report-table th:nth-child(2),
+        .report-table td:nth-child(2) {
+          display: none;
+          /* width: 18%; */
+        }
+
+        .report-table th:nth-child(3),
+        .report-table td:nth-child(3) {
+          width: 22%;
+        }
+
+        .report-table th:nth-child(4),
+        .report-table td:nth-child(4),
+        .report-table th:nth-child(5),
+        .report-table td:nth-child(5),
+        .report-table th:nth-child(6),
+        .report-table td:nth-child(6) {
+          width: 14%;
+        }
+      }
+
+      .report-table th:nth-child(4),
+      .report-table td:nth-child(4),
+      .report-table th:nth-child(5),
+      .report-table td:nth-child(5),
+      .report-table th:nth-child(6),
+      .report-table td:nth-child(6) {
+        text-align: center;
+      }
     </style>
   </head>
 
@@ -200,7 +254,7 @@
             class="relative h-[260px] overflow-hidden bg-slate-200 md:h-[330px]"
           ></div>
 
-          <div class="grid grid-cols-2 px-5 py-4">
+          <div class="grid grid-cols-3 px-5 py-4">
             <div>
               <strong id="heroReportedLocations" class="block text-[22px]"
                 >0</strong
@@ -214,6 +268,10 @@
               <span class="text-[11px] text-slate-500"
                 >Reported Police stations</span
               >
+            </div>
+            <div class="border-l border-slate-200 pl-5">
+              <strong id="heroTotalReports" class="block text-[22px]">0</strong>
+              <span class="text-[11px] text-slate-500">Total Report</span>
             </div>
           </div>
         </div>
@@ -242,7 +300,7 @@
             class="flex w-full gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 md:w-auto"
           >
             <button
-              class="filter-btn active flex-1 rounded-lg bg-white px-4 py-2 text-xs font-bold text-slate-800 shadow-sm"
+              class="filter-btn active flex-1 rounded-lg px-4 py-2 text-xs font-bold text-slate-800"
               data-filter="all"
             >
               সব
@@ -268,7 +326,7 @@
           <div id="map" class="h-[470px] w-full md:h-[600px]"></div>
 
           <div
-            class="absolute left-4 top-4 z-[500] flex w-[calc(100%-32px)] gap-3 rounded-xl border border-white/80 bg-white/95 p-3 shadow-xl md:w-[290px]"
+            class="absolute left-10 top-4 z-[500] flex w-[calc(100%-60px)] gap-3 rounded-xl border border-white/80 bg-white/95 p-3 shadow-xl md:w-[290px]"
           >
             <div
               class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#efedff]"
@@ -283,22 +341,34 @@
             </div>
           </div>
 
+          <button
+            id="mapLocateBtn"
+            type="button"
+            class="absolute right-1 bottom-4 z-[500] grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white/95 text-lg shadow-xl"
+            title="আমার বর্তমান অবস্থান"
+            aria-label="আমার বর্তমান অবস্থান"
+          >
+            ◎
+          </button>
+
           <div
-            class="absolute bottom-4 left-4 right-4 z-[500] flex flex-wrap gap-3 rounded-lg bg-white/95 px-3 py-2 text-[10px] font-bold shadow-xl md:left-auto"
+            class="absolute bottom-4 left-0 z-[500] flex flex-wrap gap-3 rounded-lg bg-white/95 px-3 py-2 text-[10px] font-bold shadow-xl md:left-auto"
           >
             <div>
               <span
-                class="mr-1 inline-block h-2 w-2 rounded-full bg-sale"
+                class="mr-1 inline-block h-2 w-2 rounded-full bg-red-500"
               ></span
               >মাদক বেচাকেনা
             </div>
             <div>
-              <span class="mr-1 inline-block h-2 w-2 rounded-full bg-use"></span
+              <span
+                class="mr-1 inline-block h-2 w-2 rounded-full bg-yellow-400"
+              ></span
               >মাদক সেবন
             </div>
             <div>
               <span
-                class="mr-1 inline-block h-2 w-2 rounded-full bg-both"
+                class="mr-1 inline-block h-2 w-2 rounded-full bg-green-500"
               ></span
               >উভয়
             </div>
@@ -416,16 +486,27 @@
               কোন থানার এলাকায় কতগুলো লোকেশন রিপোর্ট হয়েছে।
             </p>
           </div>
-          <div
-            class="flex h-11 w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 md:w-60"
-          >
-            <span class="text-slate-400">⌕</span>
-            <input
-              id="stationSearch"
-              type="search"
-              placeholder="থানা খুঁজুন..."
-              class="w-full bg-transparent text-xs outline-none"
-            />
+          <div class="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+            <select
+              id="reportDivisionSelect"
+              class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm lg:text-xs outline-none sm:w-40"
+            >
+              <option value="all">সকল বিভাগ</option>
+              <option value="dhaka">ঢাকা</option>
+              <option value="chattogram">চট্টগ্রাম</option>
+              <option value="rajshahi">রাজশাহী</option>
+              <option value="khulna">খুলনা</option>
+              <option value="barishal">বরিশাল</option>
+              <option value="sylhet">সিলেট</option>
+              <option value="rangpur">রংপুর</option>
+              <option value="mymensingh">ময়মনসিংহ</option>
+            </select>
+            <select
+              id="reportDistrictSelect"
+              class="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm lg:text-xs outline-none sm:w-48"
+            >
+              <option value="all">All districts</option>
+            </select>
           </div>
         </div>
 
@@ -433,15 +514,14 @@
           class="overflow-hidden rounded-[17px] border border-slate-200 bg-white shadow-sm"
         >
           <div class="overflow-x-auto">
-            <table class="w-full min-w-[860px] border-collapse">
+            <table class="report-table w-full min-w-0 border-collapse">
               <thead>
                 <tr
-                  class="bg-slate-50 text-left text-[10px] uppercase tracking-wide text-slate-400"
+                  class="bg-slate-50 text-left text-[14px] uppercase tracking-wide text-slate-400"
                 >
-                  <th class="px-5 py-4">থানা</th>
                   <th class="px-5 py-4">বিভাগ</th>
                   <th class="px-5 py-4">জেলা</th>
-                  <th class="px-5 py-4">উপজেলা</th>
+                  <th class="px-5 py-4">থানা</th>
                   <th class="px-5 py-4">বেচাকেনা</th>
                   <th class="px-5 py-4">সেবন</th>
                   <th class="px-5 py-4">মোট</th>
@@ -472,7 +552,7 @@
         </div>
         <button
           id="ctaReportBtn"
-          class="inline-flex min-h-[52px] rounded-xl bg-white px-6 font-bold text-primary hover:-translate-y-px"
+          class="inline-flex items-center min-h-[52px] rounded-xl bg-white px-6 font-bold text-primary hover:-translate-y-px"
         >
           + রিপোর্ট করুন
         </button>
@@ -875,7 +955,7 @@
 
               <div>
                 <strong class="block text-[10px]">
-                  লোকেশন নির্বাচন করুন
+                  লোকেশন নির্বাচন করুন bf
                 </strong>
 
                 <span class="block text-[8px] text-slate-400">
@@ -933,12 +1013,12 @@
       </div>
     </div>
 
-    <h2>Test code</h2>
+    <h2>Test code test purpose</h2>
 
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin=""
     ></script>
-    <script src="app.js?v=1.0.8"></script>
+    <script src="app.js?v=1.0.9"></script>
   </body>
 </html>

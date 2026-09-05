@@ -21,6 +21,14 @@ try {
             l.sale_count,
             l.updated_at,
 
+            (
+                SELECT r.description
+                FROM reports r
+                WHERE r.location_id = l.id
+                ORDER BY r.created_at DESC, r.id DESC
+                LIMIT 1
+            ) AS latest_description,
+
             ps.id AS police_station_id,
             ps.name AS police_station,
 
@@ -99,6 +107,11 @@ try {
 
             'title' =>
                 (string) $row['title'],
+
+            'description' =>
+                $row['latest_description'] !== null
+                    ? (string) $row['latest_description']
+                    : null,
 
             'type' =>
                 (string) $row['type'],

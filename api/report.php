@@ -289,9 +289,9 @@ if (isset($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE)
  *
  * This avoids scanning the full locations table for every report.
  */
-$latDelta = 100 / 111320;
+$latDelta = 10 / 111320;
 $cos = max(0.15, cos(deg2rad($lat)));
-$lngDelta = 100 / (111320 * $cos);
+$lngDelta = 10 / (111320 * $cos);
 
 $minLat = max(-90, $lat - $latDelta);
 $maxLat = min(90, $lat + $latDelta);

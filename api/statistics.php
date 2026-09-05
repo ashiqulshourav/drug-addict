@@ -206,6 +206,8 @@ try {
 
             d.name AS district,
 
+            d.slug AS district_slug,
+
             dv.id AS division_id,
 
             dv.name AS division,
@@ -267,6 +269,7 @@ try {
             u.bn_name,
             d.id,
             d.name,
+            d.slug,
             dv.id,
             dv.name,
             dv.slug
@@ -322,6 +325,9 @@ try {
             'district' =>
                 (string) $row['district'],
 
+            'district_slug' =>
+                (string) $row['district_slug'],
+
             'division_id' =>
                 (int) $row['division_id'],
 
@@ -350,7 +356,7 @@ try {
     */
 
     $stationCountSql = "
-        SELECT COUNT(*)
+        SELECT COUNT(DISTINCT l.upazila_id)
 
         FROM upazilas u
 
@@ -359,6 +365,9 @@ try {
 
         INNER JOIN divisions dv
             ON dv.id = d.division_id
+
+        INNER JOIN locations l
+            ON l.upazila_id = u.id
     ";
 
     if ($division !== 'all') {

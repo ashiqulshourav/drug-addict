@@ -259,18 +259,30 @@ try {
             "
             INSERT INTO divisions
                 (
+                    source_id,
                     name,
-                    slug
+                    slug,
+                    bn_name,
+                    latitude,
+                    longitude
                 )
 
             VALUES
                 (
                     ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?,
                     ?
                 )
 
             ON DUPLICATE KEY UPDATE
-                name = VALUES(name)
+                name = VALUES(name),
+                slug = VALUES(slug),
+                bn_name = VALUES(bn_name),
+                latitude = VALUES(latitude),
+                longitude = VALUES(longitude)
             "
         );
 
@@ -304,6 +316,11 @@ try {
             continue;
         }
 
+        $sourceId = (int) ($row['id'] ?? 0);
+        if ($sourceId <= 0) {
+            continue;
+        }
+
 
         /*
          * Use English name as canonical name.
@@ -316,8 +333,12 @@ try {
 
 
         $divisionInsert->execute([
+            $sourceId,
             $name,
-            $slug
+            $slug,
+            $bnName !== '' ? $bnName : null,
+            isset($row['lat']) ? (float) $row['lat'] : null,
+            isset($row['lng']) ? (float) $row['lng'] : null
         ]);
     }
 
@@ -333,13 +354,21 @@ try {
             "
             INSERT INTO districts
                 (
+                    source_id,
                     division_id,
                     name,
-                    slug
+                    slug,
+                    bn_name,
+                    latitude,
+                    longitude
                 )
 
             VALUES
                 (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
                     ?,
                     ?,
                     ?
@@ -348,8 +377,11 @@ try {
             ON DUPLICATE KEY UPDATE
                 division_id =
                     VALUES(division_id),
-                name =
-                    VALUES(name)
+                name = VALUES(name),
+                slug = VALUES(slug),
+                bn_name = VALUES(bn_name),
+                latitude = VALUES(latitude),
+                longitude = VALUES(longitude)
             "
         );
 
@@ -383,6 +415,11 @@ try {
             continue;
         }
 
+        $sourceId = (int) ($row['id'] ?? 0);
+        if ($sourceId <= 0) {
+            continue;
+        }
+
         $sourceDivisionName =
             trim(
                 (string)
@@ -404,14 +441,14 @@ try {
 
                     FROM divisions
 
-                    WHERE slug = ?
+                    WHERE source_id = ?
 
                     LIMIT 1
                     "
                 );
 
             $divisionStmt->execute([
-                slugify($sourceDivisionName)
+                $divisionId
             ]);
 
             $division =
@@ -454,12 +491,16 @@ try {
 
 
         $districtInsert->execute([
+            $sourceId,
             (int)
             $division['id'],
 
             $name,
 
-            $slug
+            $slug,
+            isset($row['bn_name']) ? trim((string) $row['bn_name']) : null,
+            isset($row['lat']) ? (float) $row['lat'] : null,
+            isset($row['lng']) ? (float) $row['lng'] : null
         ]);
     }
 
@@ -489,9 +530,10 @@ try {
             "
         );
 
-    foreach (
-        $districts as $row
-    ) {
+    if ($policeStations) {
+        foreach (
+            $districts as $row
+        ) {
 
         $districtName =
             trim(
@@ -545,12 +587,13 @@ try {
                 ? (float) $row['lng']
                 : null;
 
-        $districtStationInsert->execute([
-            (int) $district['id'],
-            $stationName,
-            $lat,
-            $lng
-        ]);
+            $districtStationInsert->execute([
+                (int) $district['id'],
+                $stationName,
+                $lat,
+                $lng
+            ]);
+        }
     }
 
 
@@ -565,6 +608,7 @@ try {
             "
             INSERT INTO upazilas
                 (
+                    source_id,
                     district_id,
                     name,
                     bn_name,
@@ -575,6 +619,7 @@ try {
 
             VALUES
                 (
+                    ?,
                     ?,
                     ?,
                     ?,
@@ -657,87 +702,25 @@ try {
         }
 
 
-        /*
-         * Find our district using
-         * the source district ID.
-         *
-         * Our districts table currently
-         * does not retain source ID, so
-         * name-based matching is safer.
-         */
+        $districtStmt =
+            $pdo->prepare(
+                "
+                SELECT id
 
-        $districtName =
-            trim(
-                (string)
-                (
-                    $row['district_name']
-                    ?? ''
-                )
+                FROM districts
+
+                WHERE source_id = ?
+
+                LIMIT 1
+                "
             );
 
+        $districtStmt->execute([
+            $sourceDistrictId
+        ]);
 
-        if (
-            $districtName === ''
-        ) {
-
-            $sourceDistrictName =
-                trim(
-                    (string)
-                    (
-                        $sourceDistrictsById[$sourceDistrictId]
-                        ?? ''
-                    )
-                );
-
-            if (
-                $sourceDistrictName !== ''
-            ) {
-                $districtStmt =
-                    $pdo->prepare(
-                        "
-                        SELECT id
-
-                        FROM districts
-
-                        WHERE name = ?
-
-                        LIMIT 1
-                        "
-                    );
-
-                $districtStmt->execute([
-                    $sourceDistrictName
-                ]);
-
-                $district =
-                    $districtStmt->fetch();
-
-            } else {
-                $district = null;
-            }
-
-        } else {
-
-            $districtStmt =
-                $pdo->prepare(
-                    "
-                    SELECT id
-
-                    FROM districts
-
-                    WHERE name = ?
-
-                    LIMIT 1
-                    "
-                );
-
-            $districtStmt->execute([
-                $districtName
-            ]);
-
-            $district =
-                $districtStmt->fetch();
-        }
+        $district =
+            $districtStmt->fetch();
 
 
         if (!$district) {
@@ -752,6 +735,8 @@ try {
 
 
         $upazilaInsert->execute([
+
+            (int) ($row['id'] ?? 0),
 
             (int)
             $district['id'],
@@ -887,6 +872,36 @@ try {
                 $name,
                 $lat,
                 $lng
+            ]);
+        }
+
+    } else {
+
+        $upazilaStations =
+            $pdo->query(
+                "
+                SELECT
+                    district_id,
+                    name,
+                    latitude,
+                    longitude
+
+                FROM upazilas
+                "
+            );
+
+        foreach (
+            $upazilaStations as $upazilaStation
+        ) {
+            $stationInsert->execute([
+                (int) $upazilaStation['district_id'],
+                (string) $upazilaStation['name'],
+                $upazilaStation['latitude'] !== null
+                    ? (float) $upazilaStation['latitude']
+                    : null,
+                $upazilaStation['longitude'] !== null
+                    ? (float) $upazilaStation['longitude']
+                    : null
             ]);
         }
 

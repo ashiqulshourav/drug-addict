@@ -24,23 +24,35 @@ try {
             ps.id AS police_station_id,
             ps.name AS police_station,
 
-            d.id AS district_id,
-            d.name AS district,
+            COALESCE(ud.id, sd.id) AS district_id,
+            COALESCE(ud.name, sd.name) AS district,
 
-            dv.id AS division_id,
-            dv.name AS division,
-            dv.slug AS division_slug
+            u.id AS upazila_id,
+            u.name AS upazila,
+
+            COALESCE(udv.id, sdv.id) AS division_id,
+            COALESCE(udv.name, sdv.name) AS division,
+            COALESCE(udv.slug, sdv.slug) AS division_slug
 
         FROM locations l
 
         LEFT JOIN police_stations ps
             ON ps.id = l.police_station_id
 
-        LEFT JOIN districts d
-            ON d.id = ps.district_id
+        LEFT JOIN upazilas u
+            ON u.id = l.upazila_id
 
-        LEFT JOIN divisions dv
-            ON dv.id = d.division_id
+        LEFT JOIN districts sd
+            ON sd.id = ps.district_id
+
+        LEFT JOIN divisions sdv
+            ON sdv.id = sd.division_id
+
+        LEFT JOIN districts ud
+            ON ud.id = u.district_id
+
+        LEFT JOIN divisions udv
+            ON udv.id = ud.division_id
 
         WHERE
             l.latitude IS NOT NULL
@@ -108,6 +120,11 @@ try {
             'district' =>
                 $row['district'] !== null
                     ? (string) $row['district']
+                    : null,
+
+            'upazila' =>
+                $row['upazila'] !== null
+                    ? (string) $row['upazila']
                     : null,
 
             'division' =>

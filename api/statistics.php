@@ -94,11 +94,11 @@ try {
         INNER JOIN locations l
             ON l.id = r.location_id
 
-        LEFT JOIN police_stations ps
-            ON ps.id = l.police_station_id
+        LEFT JOIN upazilas u
+            ON u.id = l.upazila_id
 
         LEFT JOIN districts d
-            ON d.id = ps.district_id
+            ON d.id = u.district_id
 
         LEFT JOIN divisions dv
             ON dv.id = d.division_id
@@ -158,11 +158,11 @@ try {
 
         FROM locations l
 
-        LEFT JOIN police_stations ps
-            ON ps.id = l.police_station_id
+        LEFT JOIN upazilas u
+            ON u.id = l.upazila_id
 
         LEFT JOIN districts d
-            ON d.id = ps.district_id
+            ON d.id = u.district_id
 
         LEFT JOIN divisions dv
             ON dv.id = d.division_id
@@ -178,24 +178,35 @@ try {
 
     /*
     |--------------------------------------------------------------------------
-    | ALL POLICE STATIONS
+    | ALL UPAZILAS
     |
-    | Default:
+    | Important:
+    |
     | division = all
+    |     -> ALL upazilas from ALL divisions
     |
-    | Then every police station will be returned,
-    | including stations with zero reports.
+    | division = dhaka
+    |     -> ALL upazilas belonging to Dhaka division
+    |
+    | No police_stations table is used here.
     |--------------------------------------------------------------------------
     */
 
     $stationSql = "
         SELECT
 
-            ps.id,
+            u.id,
 
-            ps.name AS station,
+            COALESCE(
+                NULLIF(u.bn_name, ''),
+                u.name
+            ) AS station,
+
+            d.id AS district_id,
 
             d.name AS district,
+
+            dv.id AS division_id,
 
             dv.name AS division,
 
@@ -225,16 +236,16 @@ try {
 
             COUNT(r.id) AS total_count
 
-        FROM police_stations ps
+        FROM upazilas u
 
         INNER JOIN districts d
-            ON d.id = ps.district_id
+            ON d.id = u.district_id
 
         INNER JOIN divisions dv
             ON dv.id = d.division_id
 
         LEFT JOIN locations l
-            ON l.police_station_id = ps.id
+            ON l.upazila_id = u.id
 
         LEFT JOIN reports r
             ON r.location_id = l.id
@@ -251,9 +262,12 @@ try {
 
         GROUP BY
 
-            ps.id,
-            ps.name,
+            u.id,
+            u.name,
+            u.bn_name,
+            d.id,
             d.name,
+            dv.id,
             dv.name,
             dv.slug
 
@@ -261,7 +275,7 @@ try {
 
             dv.name ASC,
             d.name ASC,
-            ps.name ASC
+            u.name ASC
 
     ";
 
@@ -284,6 +298,10 @@ try {
     |--------------------------------------------------------------------------
     | Build station array
     |--------------------------------------------------------------------------
+    |
+    | Frontend can continue using the existing "station" property.
+    | Here "station" actually represents the Upazila.
+    |--------------------------------------------------------------------------
     */
 
     $stations = [];
@@ -298,8 +316,14 @@ try {
             'station' =>
                 (string) $row['station'],
 
+            'district_id' =>
+                (int) $row['district_id'],
+
             'district' =>
                 (string) $row['district'],
+
+            'division_id' =>
+                (int) $row['division_id'],
 
             'division' =>
                 (string) $row['division'],
@@ -321,17 +345,17 @@ try {
 
     /*
     |--------------------------------------------------------------------------
-    | Station count
+    | Upazila count
     |--------------------------------------------------------------------------
     */
 
     $stationCountSql = "
         SELECT COUNT(*)
 
-        FROM police_stations ps
+        FROM upazilas u
 
         INNER JOIN districts d
-            ON d.id = ps.district_id
+            ON d.id = u.district_id
 
         INNER JOIN divisions dv
             ON dv.id = d.division_id

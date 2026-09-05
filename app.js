@@ -653,6 +653,25 @@ function renderMarkers() {
                             : ""
                     }
 
+                    ${
+                        location.upazila
+                            ? `
+                                <span
+                                    style="
+                                        display:block;
+                                        color:#999;
+                                        font-size:10px;
+                                        margin-top:2px;
+                                    "
+                                >
+                                    উপজেলা: ${escapeHtml(
+                                        location.upazila
+                                    )}
+                                </span>
+                              `
+                            : ""
+                    }
+
 
                     <div
                         style="
@@ -1056,6 +1075,8 @@ async function loadBackendData() {
 
     const text =
         await response.text();
+
+        // console.log(text, 'texxxxxxxxxxxxxxxxxxxxxxxt')
 
 
     console.log(
@@ -2439,6 +2460,8 @@ function renderStationTable(
             "stationTableBody"
         );
 
+        // console.log(data)
+
 
     if (!tbody) {
         return;
@@ -2450,7 +2473,7 @@ function renderStationTable(
         tbody.innerHTML = `
             <tr>
                 <td
-                    colspan="5"
+                    colspan="7"
                     style="
                         text-align:center;
                         padding:35px;
@@ -2498,7 +2521,21 @@ function renderStationTable(
 
                         <td>
                             ${escapeHtml(
+                                item.division ||
+                                ""
+                            )}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(
                                 item.district ||
+                                ""
+                            )}
+                        </td>
+
+                        <td>
+                            ${escapeHtml(
+                                item.upazilas ||
                                 ""
                             )}
                         </td>
@@ -2594,6 +2631,12 @@ function initStationSearch() {
                                 ""
                             ).toLowerCase();
 
+                        const upazilas =
+                            String(
+                                item.upazilas ||
+                                ""
+                            ).toLowerCase();
+
 
                         return (
                             station.includes(
@@ -2601,6 +2644,10 @@ function initStationSearch() {
                             ) ||
 
                             district.includes(
+                                keyword
+                            ) ||
+
+                            upazilas.includes(
                                 keyword
                             ) ||
 
@@ -2689,6 +2736,8 @@ async function loadStatisticsByDivision(
 
       result =
         JSON.parse(text);
+
+        console.log(result, 'resulttttttttttttttttt')
 
     } catch (error) {
 

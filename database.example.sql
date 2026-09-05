@@ -22,7 +22,15 @@ DROP TABLE IF EXISTS divisions;
 CREATE TABLE divisions (
     id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 
+    source_id SMALLINT UNSIGNED NOT NULL UNIQUE,
+
     name VARCHAR(80) NOT NULL UNIQUE,
+
+    bn_name VARCHAR(80) NULL,
+
+    latitude DECIMAL(10,7) NULL,
+
+    longitude DECIMAL(10,7) NULL,
 
     slug VARCHAR(40) NOT NULL UNIQUE
 
@@ -36,9 +44,13 @@ CREATE TABLE divisions (
 CREATE TABLE districts (
     id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 
+    source_id SMALLINT UNSIGNED NOT NULL UNIQUE,
+
     division_id TINYINT UNSIGNED NOT NULL,
 
     name VARCHAR(80) NOT NULL,
+
+    bn_name VARCHAR(80) NULL,
 
     slug VARCHAR(60) NOT NULL UNIQUE,
 
@@ -73,6 +85,8 @@ CREATE TABLE districts (
 CREATE TABLE upazilas (
 
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    source_id INT UNSIGNED NOT NULL UNIQUE,
 
     district_id SMALLINT UNSIGNED NOT NULL,
 
@@ -325,24 +339,24 @@ CREATE TABLE reports (
    ========================================================= */
 
 INSERT INTO divisions
-(name, slug)
+(source_id, name, slug)
 VALUES
 
-('ঢাকা', 'dhaka'),
+('3', 'ঢাকা', 'dhaka'),
 
-('চট্টগ্রাম', 'chattogram'),
+('2', 'চট্টগ্রাম', 'chattogram'),
 
-('রাজশাহী', 'rajshahi'),
+('5', 'রাজশাহী', 'rajshahi'),
 
-('খুলনা', 'khulna'),
+('4', 'খুলনা', 'khulna'),
 
-('বরিশাল', 'barishal'),
+('1', 'বরিশাল', 'barishal'),
 
-('সিলেট', 'sylhet'),
+('7', 'সিলেট', 'sylhet'),
 
-('রংপুর', 'rangpur'),
+('6', 'রংপুর', 'rangpur'),
 
-('ময়মনসিংহ', 'mymensingh');
+('8', 'ময়মনসিংহ', 'mymensingh');
 
 
 /* =========================================================

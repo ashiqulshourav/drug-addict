@@ -70,6 +70,6 @@ try {
         'reports' => $reports
     ]);
 } catch (Throwable $e) {
-    error_log('SafeMap reports error: ' . $e->getMessage());
+    error_log('Madok reports error: ' . $e->getMessage());
     json_response(['ok' => false, 'message' => 'রিপোর্ট data load করা যায়নি।'], 500);
 }

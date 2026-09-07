@@ -465,7 +465,7 @@ try {
 } catch (Throwable $e) {
 
     error_log(
-        'SafeMap statistics error: '
+        'Madok statistics error: '
         . $e->getMessage()
     );
 

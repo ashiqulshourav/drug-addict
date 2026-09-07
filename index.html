@@ -7,7 +7,7 @@
       name="description"
       content="মাদক সংক্রান্ত স্থান রিপোর্টিং প্ল্যাটফর্ম"
     />
-    <title>SafeMap — Community Location Reports</title>
+    <title>Madok — Community Location Reports</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -97,6 +97,16 @@
         z-index: 10;
       }
 
+      .report-table tr td:first-child {
+        padding-left: 15px;
+      }
+
+      .report-table td.see-more-cell {
+        display: table-cell !important;
+        padding-left: 15px !important;
+        text-align: center !important;
+      }
+
       @media (max-width: 990px) {
         .report-table {
           min-width: 0;
@@ -109,7 +119,7 @@
         .report-table td {
           min-width: 0;
           overflow-wrap: anywhere;
-          padding: 10px 4px;
+          padding: 10px 4px 10px 15px;
           vertical-align: middle;
         }
 
@@ -149,21 +159,24 @@
 
   <body class="m-0 bg-white text-slate-800">
     <header
-      class="sticky top-0 z-[1000] border-b border-slate-200/80 bg-white/90 backdrop-blur-xl"
+      class="sticky top-0 z-[1001] border-b border-slate-200/80 bg-white/90 backdrop-blur-xl shadow-md"
     >
       <div
         class="mx-auto flex min-h-[76px] w-[min(1180px,calc(100%-40px))] items-center justify-between gap-6"
       >
         <a href="#" class="flex items-center gap-2.5">
           <span
-            class="grid h-[42px] w-[42px] place-items-center rounded-xl bg-primary text-xl font-extrabold text-white shadow-lg shadow-primary/25"
-            >S</span
+            class="grid h-[42px] w-[42px] place-items-center rounded-xl bg-[#951d1f] text-xl font-extrabold text-white shadow-lg shadow-[#951d1f]/25"
+            >M</span
           >
           <span>
-            <strong class="block text-lg leading-none">SafeMap</strong>
-            <small class="mt-0.5 block text-[10px] tracking-wide text-slate-500"
-              >Community Location Reports</small
+            <strong
+              class="block lg:text-lg text-2xl leading-none text-[#951d1f]"
+              >মাদক</strong
             >
+            <!-- <small class="mt-0.5 block text-[10px] tracking-wide text-slate-500"
+              >Community Location Reports</small
+            > -->
           </span>
         </a>
 
@@ -201,21 +214,21 @@
         class="mx-auto grid w-[min(1180px,calc(100%-40px))] items-center gap-12 lg:grid-cols-[1.02fr_.98fr] lg:gap-[70px]"
       >
         <div>
-          <span class="text-[11px] font-extrabold tracking-[1.5px] text-primary"
-            >COMMUNITY REPORTING</span
+          <span class="text-sm font-extrabold tracking-[1.5px] text-[#951d1f]"
+            >মাদককে না বলুন, মাদক নির্মুলে সহযোগিতা করুন।</span
           >
           <h1
             class="mt-3 text-[42px] font-extrabold leading-[1.13] tracking-tight md:text-6xl"
           >
-            আপনার এলাকার<br /><span class="text-primary">তথ্য জানান</span>
+            আপনার এলাকার<br /><span class="text-[#951d1f]"
+              >মাদকের তথ্য দিন</span
+            >
           </h1>
           <p
             class="mb-7 mt-4 max-w-xl text-sm leading-7 text-slate-500 md:text-base"
           >
-            <!-- কোনো এলাকায় মাদক সেবন বা বেচাকেনার ঘটনা চোখে পড়লে লোকেশনটি রিপোর্ট
-            করুন। আপনার রিপোর্ট এলাকার পরিস্থিতি বুঝতে সাহায্য করবে। -->
-            কোনো ঘটনা চোখে পড়লে লোকেশনটি রিপোর্ট করুন। আপনার রিপোর্ট এলাকার
-            পরিস্থিতি বুঝতে সাহায্য করবে।
+            কোনো এলাকায় মাদক সেবন বা বেচাকেনার ঘটনা চোখে পড়লে লোকেশনটি রিপোর্ট
+            করুন। আপনার রিপোর্ট এলাকার মাদকের পরিস্থিতি বুঝতে সাহায্য করবে।
           </p>
 
           <div class="flex flex-wrap gap-3">
@@ -248,7 +261,7 @@
             <span
               class="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_0_5px_rgba(34,197,94,.12)]"
             ></span>
-            Live Map Preview
+            Live Map Preview Of Reported Locations
           </div>
 
           <div
@@ -256,24 +269,31 @@
             class="relative h-[260px] overflow-hidden bg-slate-200 md:h-[330px]"
           ></div>
 
-          <div class="grid grid-cols-3 px-5 py-4">
+          <div class="px-5 py-4">
             <div>
-              <strong id="heroReportedLocations" class="block text-[22px]"
-                >0</strong
-              >
-              <span class="text-[11px] text-slate-500">Reported locations</span>
+              <h3 class="mb-3"><strong>Total Reported Data</strong></h3>
             </div>
-            <div class="border-l border-slate-200 pl-5">
-              <strong id="heroPoliceStations" class="block text-[22px]"
-                >0</strong
-              >
-              <span class="text-[11px] text-slate-500"
-                >Reported Police stations</span
-              >
-            </div>
-            <div class="border-l border-slate-200 pl-5">
-              <strong id="heroTotalReports" class="block text-[22px]">0</strong>
-              <span class="text-[11px] text-slate-500">Total Report</span>
+            <div class="grid grid-cols-3">
+              <div class="">
+                <strong id="heroPoliceStations" class="block text-[22px]"
+                  >0</strong
+                >
+                <span class="text-[11px] text-slate-500"
+                  >Police stations / Upazilas</span
+                >
+              </div>
+              <div class="border-l border-slate-200 pl-5">
+                <strong id="heroReportedLocations" class="block text-[22px]"
+                  >0</strong
+                >
+                <span class="text-[11px] text-slate-500">Total Locations</span>
+              </div>
+              <div class="border-l border-slate-200 pl-5">
+                <strong id="heroTotalReports" class="block text-[22px]"
+                  >0</strong
+                >
+                <span class="text-[11px] text-slate-500">Total Report</span>
+              </div>
             </div>
           </div>
         </div>
@@ -291,10 +311,11 @@
               >EXPLORE MAP</span
             >
             <h2 class="mt-1 text-3xl font-extrabold tracking-tight">
-              রিপোর্ট করা লোকেশন
+              রিপোর্ট করা লোকেশন দেখুন
             </h2>
             <p class="text-sm text-slate-500">
-              মানচিত্র থেকে রিপোর্ট করা এলাকাগুলো দেখুন।
+              মানচিত্র থেকে রিপোর্ট করা এলাকাগুলো দেখুন এবং ম্যাপে কোন লোকেশন
+              ক্লিক করে রিপোর্ট করুন।
             </p>
           </div>
 
@@ -346,15 +367,18 @@
           <button
             id="mapLocateBtn"
             type="button"
-            class="absolute right-1 bottom-4 z-[500] grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white/95 text-lg shadow-xl"
+            class="absolute right-1 bottom-4 z-[500] flex items-center justify-center h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-black/95 text-lg shadow-xl"
             title="আমার বর্তমান অবস্থান"
             aria-label="আমার বর্তমান অবস্থান"
           >
-            ◎
+            <span
+              class="p-1 rounded-full border border-white border-[3px] bg-primary"
+            >
+            </span>
           </button>
 
           <div
-            class="absolute bottom-4 left-0 z-[500] flex flex-wrap gap-3 rounded-lg bg-white/95 px-3 py-2 text-[10px] font-bold shadow-xl md:left-auto"
+            class="absolute bottom-4 left-0 z-[500] flex flex-wrap gap-3 rounded-lg bg-white/95 px-3 py-2 text-[10px] md:text-[12px] font-bold shadow-xl md:left-auto"
           >
             <div>
               <span
@@ -390,10 +414,10 @@
               >OVERVIEW</span
             >
             <h2 class="mt-1 text-3xl font-extrabold tracking-tight">
-              এলাকার পরিসংখ্যান
+              মাদকাসক্ত এলাকার পরিসংখ্যান
             </h2>
             <p class="text-sm text-slate-500">
-              রিপোর্ট করা লোকেশনের একটি সামগ্রিক চিত্র।
+              রিপোর্ট করা লোকেশনের একটি সামগ্রিক তথ্য।
             </p>
           </div>
           <select
@@ -479,13 +503,13 @@
           <div>
             <span
               class="text-[11px] font-extrabold tracking-[1.5px] text-primary"
-              >POLICE STATIONS</span
+              >POLICE STATIONS / UPAZILAS</span
             >
             <h2 class="mt-1 text-3xl font-extrabold tracking-tight">
-              থানা অনুযায়ী রিপোর্ট
+              থানা / উপজেলা অনুযায়ী রিপোর্ট
             </h2>
             <p class="text-sm text-slate-500">
-              কোন থানার এলাকায় কতগুলো লোকেশন রিপোর্ট হয়েছে।
+              কোন থানায় / উপজেলায় কতগুলো লোকেশন রিপোর্ট হয়েছে।
             </p>
           </div>
           <div class="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
@@ -523,7 +547,7 @@
                 >
                   <th class="px-5 py-4">বিভাগ</th>
                   <th class="px-5 py-4">জেলা</th>
-                  <th class="px-5 py-4">থানা</th>
+                  <th class="px-5 py-4">থানা / উপজেলা</th>
                   <th class="px-5 py-4">বেচাকেনা</th>
                   <th class="px-5 py-4">সেবন</th>
                   <th class="px-5 py-4">মোট</th>
@@ -546,15 +570,16 @@
             >HELP YOUR COMMUNITY</span
           >
           <h2 class="mt-1 text-2xl font-extrabold text-white md:text-3xl">
-            আপনার এলাকায় কোনো স্থান রিপোর্ট করতে চান?
+            আপনার এলাকায় মাদক সেবন বা বিক্রয়ের কোনো স্থান রিপোর্ট করতে চান?
           </h2>
           <p class="mt-1 text-sm text-white/70">
-            লোকেশন, একটি ছবি এবং সংক্ষিপ্ত তথ্য দিয়ে রিপোর্ট করুন।
+            লোকেশন সিলেক্ট করুন, একটি ছবি (ঐচ্ছিক) এবং সংক্ষিপ্ত তথ্য দিয়ে
+            রিপোর্ট করুন।
           </p>
         </div>
         <button
           id="ctaReportBtn"
-          class="inline-flex items-center min-h-[52px] rounded-xl bg-white px-6 font-bold text-primary hover:-translate-y-px"
+          class="inline-flex items-center min-h-[52px] min-w-[150px] rounded-xl bg-white px-6 font-bold text-primary hover:-translate-y-px"
         >
           + রিপোর্ট করুন
         </button>
@@ -566,13 +591,13 @@
         class="mx-auto flex w-[min(1180px,calc(100%-40px))] flex-col items-start justify-between gap-3 md:flex-row md:items-center"
       >
         <div>
-          <strong>SafeMap</strong>
+          <strong>Madok</strong>
           <p class="m-0 text-[10px] text-slate-400">
             Community-powered location reporting platform.
           </p>
         </div>
         <span class="text-[10px] text-slate-400"
-          >© 2026 SafeMap. Prototype UI.</span
+          >© 2026 Madok. Prototype UI.</span
         >
       </div>
     </footer>
@@ -592,7 +617,9 @@
               class="text-[11px] font-extrabold tracking-[1.5px] text-primary"
               >NEW REPORT</span
             >
-            <h2 class="mt-1 text-2xl font-extrabold">লোকেশন রিপোর্ট করুন</h2>
+            <h2 class="mt-1 text-2xl font-extrabold">
+              মাদকের লোকেশন রিপোর্ট করুন
+            </h2>
           </div>
           <button
             id="closeReportBtn"
@@ -602,9 +629,10 @@
           </button>
         </div>
 
-        <form id="reportForm">
+        <form id="reportForm" novalidate>
           <div class="mb-5">
-            <label class="mb-2 block text-xs font-bold text-slate-600"
+            <label
+              class="mb-2 block text-xs md:text-sm font-bold text-slate-600"
               >রিপোর্টের ধরন <span class="text-use">*</span></label
             >
             <div class="grid gap-2.5 sm:grid-cols-2">
@@ -613,19 +641,20 @@
                   type="radio"
                   name="reportType"
                   value="use"
-                  checked
+                  required
                   class="peer sr-only"
                 />
                 <span
-                  class="flex min-h-[73px] cursor-pointer items-center gap-2 rounded-xl border border-slate-200 p-2.5 peer-checked:border-primary peer-checked:bg-[#f8f7ff]"
+                  class="flex min-h-[73px] cursor-pointer items-center gap-2 rounded-xl border border-slate-200 p-2.5 peer-checked:border-primary peer-checked:bg-[#f8f7ff] hover:border-primary hover:bg-[#f8f7ff]"
                 >
                   <span
                     class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-red-50 text-use"
                     >◉</span
                   >
                   <span
-                    ><strong class="block text-[11px]">মাদক সেবন</strong
-                    ><small class="text-[9px] text-slate-400"
+                    ><strong class="block text-[12px] md:text-sm"
+                      >মাদক সেবন</strong
+                    ><small class="text-[11px] text-slate-400"
                       >এখানে মাদক সেবনের রিপোর্ট</small
                     ></span
                   >
@@ -639,27 +668,33 @@
                   class="peer sr-only"
                 />
                 <span
-                  class="flex min-h-[73px] cursor-pointer items-center gap-2 rounded-xl border border-slate-200 p-2.5 peer-checked:border-primary peer-checked:bg-[#f8f7ff]"
+                  class="flex min-h-[73px] cursor-pointer items-center gap-2 rounded-xl border border-slate-200 p-2.5 peer-checked:border-primary peer-checked:bg-[#f8f7ff] hover:border-primary hover:bg-[#f8f7ff]"
                 >
                   <span
                     class="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-orange-50 text-sale"
                     >↗</span
                   >
                   <span
-                    ><strong class="block text-[11px]">মাদক বেচাকেনা</strong
-                    ><small class="text-[9px] text-slate-400"
+                    ><strong class="block text-[12px] md:text-sm"
+                      >মাদক বেচাকেনা</strong
+                    ><small class="text-[11px] text-slate-400"
                       >এখানে মাদক বেচাকেনার রিপোর্ট</small
                     ></span
                   >
                 </span>
               </label>
             </div>
+            <p
+              id="reportTypeError"
+              data-validation-error
+              class="mt-1.5 hidden text-[11px] text-red-500"
+            ></p>
           </div>
 
           <div class="mb-5">
             <label
               for="reportTitle"
-              class="mb-2 block text-xs font-bold text-slate-600"
+              class="mb-2 block text-xs md:text-sm font-bold text-slate-600"
               >শিরোনাম <span class="text-use">*</span></label
             >
             <input
@@ -667,16 +702,21 @@
               name="title"
               type="text"
               maxlength="100"
-              placeholder="যেমন: কলেজ মাঠে মাদক সেবন চলছে"
+              placeholder="যেমন: কলেজ মাঠের উত্তর কর্ণারে মাদক সেবন চলছে"
               required
               class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
             />
+            <p
+              id="reportTitleError"
+              data-validation-error
+              class="mt-1.5 hidden text-[11px] text-red-500"
+            ></p>
           </div>
 
           <div class="mb-5">
             <label
               for="reportDescription"
-              class="mb-2 block text-xs font-bold text-slate-600"
+              class="mb-2 block text-xs md:text-sm font-bold text-slate-600"
               >সংক্ষিপ্ত বিবরণ</label
             >
             <textarea
@@ -689,38 +729,58 @@
             ></textarea>
           </div>
 
-          <div class="mb-5">
-            <label class="mb-2 block text-xs font-bold text-slate-600">
+          <div class="mb-5" id="selectReportLocation">
+            <label
+              class="mb-2 block text-xs md:text-sm font-bold text-slate-600"
+            >
               রিপোর্টের লোকেশন <span class="text-use">*</span>
             </label>
 
             <!-- Location Buttons -->
             <div class="grid grid-cols-2 gap-2">
               <!-- Current Location -->
-              <button
-                type="button"
-                id="getLocationBtn"
-                class="flex min-h-[46px] items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition hover:border-primary hover:bg-[#f8f7ff] hover:text-primary"
-              >
-                <span>◎</span>
-                <span>আমার লোকেশন</span>
-              </button>
+              <label id="getLocationBtn" class="relative">
+                <input
+                  type="radio"
+                  name="locationMethod"
+                  value="current"
+                  required
+                  class="peer sr-only"
+                />
+                <span
+                  class="flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition peer-checked:border-primary peer-checked:bg-[#f8f7ff] peer-checked:text-primary hover:border-primary hover:bg-[#f8f7ff] hover:text-primary"
+                >
+                  <span>◎</span>
+                  <span>আমার লোকেশন</span>
+                </span>
+              </label>
 
               <!-- Select From Map -->
-              <button
-                type="button"
-                id="openMapSelectBtn"
-                class="flex min-h-[46px] items-center justify-center gap-2 rounded-xl border border-primary bg-[#f8f7ff] px-3 text-xs font-bold text-primary transition hover:bg-primary hover:text-white"
-              >
-                <span>📍</span>
-                <span>ম্যাপ থেকে নির্বাচন করুন</span>
-              </button>
+              <label id="openMapSelectBtn" class="relative">
+                <input
+                  type="radio"
+                  name="locationMethod"
+                  value="map"
+                  class="peer sr-only"
+                />
+                <span
+                  class="flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 transition peer-checked:border-primary peer-checked:bg-[#f8f7ff] peer-checked:text-primary hover:border-primary hover:bg-[#f8f7ff] hover:text-primary"
+                >
+                  <span>📍</span>
+                  <span>ম্যাপ থেকে নির্বাচন করুন</span>
+                </span>
+              </label>
             </div>
+            <p
+              id="reportLocationError"
+              data-validation-error
+              class="mt-1.5 hidden text-[11px] text-red-500"
+            ></p>
 
             <!-- Selected Location -->
             <div
               id="selectedLocation"
-              class="mt-2 flex min-h-10 items-center gap-2 rounded-lg bg-slate-50 px-3 text-[10px] text-slate-500"
+              class="mt-2 flex min-h-10 items-center gap-2 rounded-lg bg-slate-50 px-3 text-[12px] text-slate-500"
             >
               <span>📍</span>
               <span
@@ -736,7 +796,9 @@
           </div>
 
           <div class="mb-5">
-            <label class="mb-2 block text-xs font-bold text-slate-600">
+            <label
+              class="mb-2 block text-xs md:text-sm font-bold text-slate-600"
+            >
               আপনি কি তাদের ধরিয়ে দিতে ইচ্ছুক?
             </label>
 
@@ -746,7 +808,7 @@
             >
               <div class="mt-0.5 text-blue-600">ⓘ</div>
 
-              <p class="m-0 text-[10px] leading-5 text-blue-700">
+              <p class="m-0 text-[12px] leading-5 text-blue-700">
                 আপনি চাইলে আমাদের সাথে আপনার যোগাযোগের তথ্য শেয়ার করতে পারেন।
                 আপনার দেওয়া তথ্য অন্য কোনো ব্যবহারকারীর কাছে প্রকাশ করা হবে না।
                 শুধুমাত্র প্রয়োজন হলে সংশ্লিষ্ট কর্তৃপক্ষের সাথে যোগাযোগের জন্য
@@ -762,11 +824,12 @@
                   name="willingToContact"
                   value="yes"
                   id="contactYes"
+                  required
                   class="peer sr-only"
                 />
 
                 <span
-                  class="flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 transition peer-checked:border-primary peer-checked:bg-[#f8f7ff] peer-checked:text-primary"
+                  class="flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 transition peer-checked:border-primary peer-checked:bg-[#f8f7ff] peer-checked:text-primary hover:border-primary hover:bg-[#f8f7ff]"
                 >
                   <span>✓</span>
                   হ্যাঁ, আমি ইচ্ছুক
@@ -780,11 +843,10 @@
                   value="no"
                   id="contactNo"
                   class="peer sr-only"
-                  checked
                 />
 
                 <span
-                  class="flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 transition peer-checked:border-slate-400 peer-checked:bg-slate-50"
+                  class="flex min-h-[48px] cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 transition peer-checked:border-primary peer-checked:bg-[#f8f7ff] hover:border-primary hover:bg-[#f8f7ff]"
                 >
                   <span>×</span>
                   না
@@ -792,11 +854,17 @@
               </label>
             </div>
 
+            <p
+              id="contactError"
+              data-validation-error
+              class="mt-1.5 hidden text-[11px] text-red-500"
+            ></p>
+
             <!-- Contact Input -->
             <div id="contactInputWrapper" class="mt-3 hidden">
               <label
                 for="contactInfo"
-                class="mb-2 block text-xs font-bold text-slate-600"
+                class="mb-2 block text-xs md:text-sm font-bold text-slate-600"
               >
                 মোবাইল নম্বর অথবা ইমেইল
               </label>
@@ -809,7 +877,7 @@
                 class="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs outline-none transition focus:border-primary focus:ring-4 focus:ring-primary/10"
               />
 
-              <p class="mt-1.5 text-[9px] text-slate-400">
+              <p class="mt-1.5 text-[11px] text-slate-400">
                 আপনার তথ্য গোপন রাখা হবে এবং শুধুমাত্র প্রয়োজনীয় যোগাযোগের জন্য
                 ব্যবহার করা হবে।
               </p>
@@ -817,7 +885,8 @@
           </div>
 
           <div class="mb-5">
-            <label class="mb-2 block text-xs font-bold text-slate-600"
+            <label
+              class="mb-2 block text-xs md:text-sm font-bold text-slate-600"
               >ছবি
               <span class="font-normal text-slate-400"
                 >(ঐচ্ছিক, সর্বোচ্চ ১টি)</span
@@ -838,10 +907,10 @@
                 class="mb-1 grid h-9 w-9 place-items-center rounded-lg bg-[#efedff] text-lg font-bold text-primary"
                 >↑</span
               >
-              <strong class="text-[11px] text-slate-600"
+              <strong class="text-[12px] text-slate-600"
                 >ছবি নির্বাচন করুন</strong
               >
-              <small class="text-[9px] text-slate-400"
+              <small class="text-[11px] text-slate-400"
                 >JPG, PNG বা WebP · সর্বোচ্চ 5MB</small
               >
             </label>
@@ -864,7 +933,7 @@
                 <button
                   type="button"
                   id="removeImageBtn"
-                  class="text-[10px] text-use"
+                  class="text-[12px] text-use"
                 >
                   ছবি সরান
                 </button>
@@ -874,7 +943,7 @@
 
           <div class="flex gap-2 rounded-lg bg-slate-50 p-3 text-slate-500">
             <span class="text-primary">ⓘ</span>
-            <p class="m-0 text-[9px] leading-4">
+            <p class="m-0 text-[12px] leading-4">
               শুধুমাত্র জনসাধারণের জন্য প্রাসঙ্গিক লোকেশন রিপোর্ট করুন। কোনো
               ব্যক্তির ব্যক্তিগত তথ্য প্রকাশ করবেন না।
             </p>
@@ -957,7 +1026,7 @@
 
               <div>
                 <strong class="block text-[10px]">
-                  লোকেশন নির্বাচন করুন bf
+                  লোকেশন নির্বাচন করুন
                 </strong>
 
                 <span class="block text-[8px] text-slate-400">
@@ -1015,12 +1084,10 @@
       </div>
     </div>
 
-    <h2>Test code test purpose</h2>
-
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin=""
     ></script>
-    <script src="app.js?v=1.0.9"></script>
+    <script src="app.js?v=2.0.0"></script>
   </body>
 </html>

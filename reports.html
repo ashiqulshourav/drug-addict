@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SafeMap - সব রিপোর্ট</title>
+    <title>Madok - সব রিপোর্ট</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -24,20 +24,19 @@
       >
         <a href="index.html" class="flex items-center gap-2.5 no-underline">
           <span
-            class="grid h-10 w-10 place-items-center rounded-xl bg-[#5b46e8] text-xl font-extrabold text-white"
-            >S</span
+            class="grid h-10 w-10 place-items-center rounded-xl bg-[#951d1f] text-xl font-extrabold text-white"
+            >M</span
           >
           <span
-            ><strong class="block text-lg leading-none text-slate-800"
-              >SafeMap</strong
-            ><small class="text-[10px] text-slate-500"
-              >Community Location Reports</small
+            ><strong
+              class="block lg:text-lg text-2xl leading-none text-[#951d1f]"
+              >মাদক</strong
             ></span
           >
         </a>
         <a
           href="index.html"
-          class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 no-underline hover:bg-slate-50"
+          class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 no-underline hover:bg-slate-50"
           >হোম পেজ</a
         >
       </div>
@@ -56,8 +55,8 @@
       <div
         class="mx-auto flex w-[min(900px,calc(100%-32px))] items-center justify-between gap-3"
       >
-        <strong>SafeMap</strong
-        ><span class="text-[10px] text-slate-400">© 2026 SafeMap</span>
+        <strong>Madok</strong
+        ><span class="text-[10px] text-slate-400">© 2026 Madok</span>
       </div>
     </footer>
 
@@ -91,11 +90,11 @@
           throw new Error(result.message || "রিপোর্ট load করা যায়নি।");
 
         const place = result.location;
-        summary.innerHTML = `<div class="border-b border-slate-200 pb-5"><p class="mb-2 text-[11px] font-extrabold tracking-[1.5px] text-[#5b46e8]">ALL REPORTS</p><h1 class="m-0 text-2xl font-extrabold">এই লোকেশনের সব রিপোর্ট</h1><p class="mt-2 text-xs text-slate-500">${escapeHtml(place.upazila || place.station || "লোকেশন")} . ${escapeHtml(place.district || "")} . ${escapeHtml(place.division || "")}</p><p class="mt-1 text-xs font-bold text-slate-600">মোট রিপোর্ট: ${Number(place.total).toLocaleString("en-US")}</p></div>`;
+        summary.innerHTML = `<div class="border-b border-slate-200 pb-5"><p class="mb-2 text-[12px] font-extrabold tracking-[1.5px] text-[#5b46e8]">ALL REPORTS</p><h1 class="m-0 text-3xl font-extrabold">এই লোকেশনের সব রিপোর্ট</h1><p class="mt-2 text-sm text-slate-500">${escapeHtml(place.upazila || place.station || "লোকেশন")} . ${escapeHtml(place.district || "")} . ${escapeHtml(place.division || "")}</p><p class="mt-1 text-sm font-bold text-slate-600">মোট রিপোর্ট: ${Number(place.total).toLocaleString("en-US")}</p></div>`;
         list.innerHTML = result.reports
           .map(
             (report) =>
-              `<article class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-start justify-between gap-3"><div><span class="inline-block rounded-md px-2 py-1 text-[10px] font-bold ${typeStyles(report.type)}">${typeLabel(report.type)}</span><h2 class="mt-3 text-base font-bold">${escapeHtml(report.title)}</h2></div><time class="shrink-0 text-[10px] text-slate-400">${escapeHtml(report.created_at)}</time></div><p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">${escapeHtml(report.description || "বিস্তারিত তথ্য দেওয়া হয়নি।")}</p>${report.image ? `<img src="${escapeHtml(report.image)}" alt="রিপোর্টের ছবি" loading="lazy" class="mt-4 max-h-64 w-full rounded-xl object-contain bg-slate-100" />` : ""}</article>`,
+              `<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-start justify-between gap-3"><div><span class="inline-block rounded-md px-2 py-1 text-[12px] font-bold ${typeStyles(report.type)}">${typeLabel(report.type)}</span><h2 class="mt-3 text-base font-bold">${escapeHtml(report.title)}</h2></div><time class="shrink-0 text-[12px] text-slate-400">${escapeHtml(report.created_at)}</time></div><p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">${escapeHtml(report.description || "বিস্তারিত তথ্য দেওয়া হয়নি।")}</p>${report.image ? `<img src="${escapeHtml(report.image)}" alt="রিপোর্টের ছবি" loading="lazy" class="mt-4 max-h-64 w-full rounded-xl object-contain bg-slate-100" />` : ""}</div>`,
           )
           .join("");
       }

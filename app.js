@@ -2633,7 +2633,7 @@ function renderStationTable(
         (data.length > 15
             ? `
                 <tr>
-                    <td colspan="6" class="py-4 text-center">
+                    <td colspan="6" class="see-more-cell py-4 text-center">
                         <button
                             type="button"
                             id="stationSeeMoreBtn"

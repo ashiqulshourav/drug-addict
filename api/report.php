@@ -576,7 +576,7 @@ try {
     if ($imagePath) {
         @unlink(dirname(__DIR__) . '/' . $imagePath);
     }
-    error_log('SafeMap report error: ' . $e->getMessage());
+    error_log('Madok report error: ' . $e->getMessage());
     json_response(['ok' => false, 'message' => 'রিপোর্ট save করা যায়নি।'], 500);
 }
 

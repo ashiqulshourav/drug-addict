@@ -1,6 +1,6 @@
-# SafeMap — PHP + MySQL backend
+# madok — PHP + MySQL backend
 
-এই package-এ তোমার existing SafeMap frontend-কে PHP + MySQL backend-এর সঙ্গে যুক্ত করা হয়েছে।
+এই package-এ তোমার existing Madok frontend-কে PHP + MySQL backend-এর সঙ্গে যুক্ত করা হয়েছে।
 
 ## Folder structure
 
@@ -25,13 +25,13 @@
 ## InfinityFree setup
 
 1. Hosting account তৈরি করে একটি MySQL database তৈরি করো।
-2. `database.sql`-এর SQL phpMyAdmin-এ import করো। যদি hosting provider database create করার সময় database name নিজে দেয়, `CREATE DATABASE` এবং `USE safemap` অংশ প্রয়োজন হলে বাদ দিয়ে সেই database select করে বাকি SQL চালাও।
+2. `database.sql`-এর SQL phpMyAdmin-এ import করো। যদি hosting provider database create করার সময় database name নিজে দেয়, `CREATE DATABASE` এবং `USE madok` অংশ প্রয়োজন হলে বাদ দিয়ে সেই database select করে বাকি SQL চালাও।
 3. `config/database.php`-এ hosting থেকে পাওয়া:
    - DB_HOST
    - DB_NAME
    - DB_USER
    - DB_PASS
-   বসাও।
+     বসাও।
 4. সব files `public_html`-এ upload করো।
 5. `uploads/reports` writable আছে কি না দেখো। সাধারণত 755 যথেষ্ট; provider প্রয়োজন হলে 775 ব্যবহার করো।
 6. Browser-এ site খুলে একটি test report submit করো।
@@ -59,4 +59,5 @@
 `config/database.php` public repository-তে commit করবে না। এটি hosting credentials রাখে।
 
 ## Quick test
+
 `/api/health.php` খুললে `database: connected` দেখালে PHP → MySQL connection ঠিক আছে।

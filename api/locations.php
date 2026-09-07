@@ -126,9 +126,8 @@ try {
                 (int) $row['sale_count'],
 
             'station' =>
-                $row['police_station'] !== null
-                    ? (string) $row['police_station']
-                    : 'থানা নির্ধারণ করা হয়নি',
+                $row['police_station'] !== null ? (string) $row['police_station'] : ($row['upazila'] !== null
+                        ? (string) $row['upazila'] : 'থানা / উপজেলা নির্ধারণ করা হয়নি'),
 
             'district' =>
                 $row['district'] !== null
@@ -166,7 +165,7 @@ try {
 } catch (Throwable $e) {
 
     error_log(
-        'SafeMap locations error: ' .
+        'Madok locations error: ' .
         $e->getMessage()
     );
 

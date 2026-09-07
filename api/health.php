@@ -13,7 +13,7 @@ try {
         'php' => PHP_VERSION,
     ]);
 } catch (Throwable $e) {
-    error_log('SafeMap health error: ' . $e->getMessage());
+    error_log('Madok health error: ' . $e->getMessage());
     json_response([
         'ok' => false,
         'database' => 'connection_failed',

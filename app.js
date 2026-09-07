@@ -1,5 +1,5 @@
 /* =========================================================
-   SafeMap
+   Madok (মাদক)
    Clean frontend controller
    PHP + MySQL backend
    Leaflet maps
@@ -75,6 +75,7 @@ let reportDivisionSelect = null;
 let stationDivision = "all";
 let reportDistrictSelect = null;
 let stationDistrict = "all";
+let stationTableExpanded = false;
 
 
 /* =========================================================
@@ -331,7 +332,7 @@ function initMap() {
     if (!mapElement) {
 
         console.warn(
-            "[SafeMap] #map not found."
+            "[Madok] #map not found."
         );
 
         return;
@@ -348,7 +349,7 @@ function initMap() {
     ) {
 
         console.error(
-            "[SafeMap] Leaflet is not loaded."
+            "[Madok] Leaflet is not loaded."
         );
 
         return;
@@ -381,6 +382,13 @@ function initMap() {
     map.on(
         "click",
         function(event) {
+
+            const mapLocationMethod = document.querySelector(
+                'input[name="locationMethod"][value="map"]'
+            );
+            if (mapLocationMethod) {
+                mapLocationMethod.checked = true;
+            }
 
             setSelectedLocation(
                 event.latlng.lat,
@@ -420,7 +428,7 @@ function initHeroMap() {
     if (!heroMapElement) {
 
         console.warn(
-            "[SafeMap] #heroMap not found."
+            "[Madok] #heroMap not found."
         );
 
         return;
@@ -437,7 +445,7 @@ function initHeroMap() {
     ) {
 
         console.error(
-            "[SafeMap] Leaflet is not loaded."
+            "[Madok] Leaflet is not loaded."
         );
 
         return;
@@ -901,7 +909,7 @@ function renderHeroMarkers() {
 async function loadMapLocations() {
 
     console.log(
-        "[SafeMap] Loading locations..."
+        "[Madok] Loading locations..."
     );
 
 
@@ -926,7 +934,7 @@ async function loadMapLocations() {
 
 
     console.log(
-        "[SafeMap] Locations HTTP:",
+        "[Madok] Locations HTTP:",
         response.status
     );
 
@@ -950,7 +958,7 @@ async function loadMapLocations() {
     } catch (error) {
 
         console.error(
-            "[SafeMap] Invalid locations JSON:",
+            "[Madok] Invalid locations JSON:",
             text
         );
 
@@ -997,7 +1005,7 @@ async function loadMapLocations() {
                 ) {
 
                     console.warn(
-                        "[SafeMap] Invalid location skipped:",
+                        "[Madok] Invalid location skipped:",
                         location
                     );
 
@@ -1037,7 +1045,7 @@ async function loadMapLocations() {
 
 
     console.log(
-        `[SafeMap] ${demoLocations.length} locations loaded.`
+        `[Madok] ${demoLocations.length} locations loaded.`
     );
 
 
@@ -1057,7 +1065,7 @@ async function loadMapLocations() {
 async function loadBackendData() {
 
     console.log(
-        "[SafeMap] Loading statistics..."
+        "[Madok] Loading statistics..."
     );
 
 
@@ -1084,7 +1092,7 @@ async function loadBackendData() {
 
 
     console.log(
-        "[SafeMap] Statistics HTTP:",
+        "[Madok] Statistics HTTP:",
         response.status
     );
 
@@ -1108,7 +1116,7 @@ async function loadBackendData() {
     } catch (error) {
 
         console.error(
-            "[SafeMap] Invalid statistics JSON:",
+            "[Madok] Invalid statistics JSON:",
             text
         );
 
@@ -1170,7 +1178,7 @@ async function loadBackendData() {
         result.statistics || {};
 
 
-    window.safeMapStatistics = {
+    window.madokStatistics = {
 
         total_reports:
             numberValue(
@@ -1215,13 +1223,13 @@ async function loadBackendData() {
 
 
     console.log(
-        "[SafeMap] Statistics:",
-        window.safeMapStatistics
+        "[Madok] Statistics:",
+        window.madokStatistics
     );
 
 
     updateStatisticsUI(
-        window.safeMapStatistics
+        window.madokStatistics
     );
 
 
@@ -1360,14 +1368,12 @@ function locateUser(targetId = "map") {
 
 
     if (button) {
-        console.log(button)
-
         button.disabled = true;
 
-        button.dataset.originalText =
-            button.innerHTML;
-
-        button.innerHTML = button.id !== "mapLocateBtn" ? "◎ লোকেশন নেওয়া হচ্ছে..." : "◎";
+        if (targetId === "heroMap") {
+            button.dataset.originalText = button.innerHTML;
+            button.innerHTML = "◎ লোকেশন নেওয়া হচ্ছে...";
+        }
     }
 
 
@@ -1391,7 +1397,7 @@ function locateUser(targetId = "map") {
                 !Number.isFinite(lng)
             ) {
 
-                restoreLocateButton();
+                restoreLocateButton(targetId);
 
                 showToast(
                     "লোকেশন পাওয়া যায়নি",
@@ -1414,7 +1420,7 @@ function locateUser(targetId = "map") {
 
             if (!heroMap) {
 
-                restoreLocateButton();
+                restoreLocateButton(targetId);
 
                 showToast(
                     "Map প্রস্তুত নয়",
@@ -1548,7 +1554,7 @@ function locateUser(targetId = "map") {
             );
 
 
-            restoreLocateButton();
+            restoreLocateButton(targetId);
 
             document.getElementById(targetId)?.scrollIntoView({
                 behavior: "smooth",
@@ -1568,12 +1574,12 @@ function locateUser(targetId = "map") {
         function(error) {
 
             console.error(
-                "[SafeMap] Geolocation error:",
+                "[Madok] Geolocation error:",
                 error
             );
 
 
-            restoreLocateButton();
+            restoreLocateButton(targetId);
 
 
             let message =
@@ -1631,11 +1637,11 @@ function locateUserOnHeroMap() {
     locateUser("heroMap");
 }
 
-function restoreLocateButton() {
+function restoreLocateButton(targetId = "heroMap") {
 
     const button =
         document.getElementById(
-            "locateMeBtn"
+            targetId === "map" ? "mapLocateBtn" : "locateMeBtn"
         );
 
 
@@ -1647,9 +1653,11 @@ function restoreLocateButton() {
     button.disabled = false;
 
 
-    button.innerHTML =
-        button.dataset.originalText ||
-        "◎ আমার অবস্থান";
+    if (targetId === "heroMap") {
+        button.innerHTML =
+            button.dataset.originalText ||
+            "◎ আমার অবস্থান";
+    }
 }
 
 
@@ -1679,14 +1687,12 @@ function getCurrentLocationForReport() {
 
 
     if (button) {
-
-        button.disabled = true;
-
-        button.dataset.originalText =
-            button.innerHTML;
-
-        button.innerHTML =
-            "◎ লোকেশন নেওয়া হচ্ছে...";
+        const locationOption = button.querySelector(
+            'input[name="locationMethod"]'
+        );
+        if (locationOption) {
+            locationOption.checked = true;
+        }
     }
 
 
@@ -1720,7 +1726,7 @@ function getCurrentLocationForReport() {
         function(error) {
 
             console.error(
-                "[SafeMap] Report geolocation error:",
+                "[Madok] Report geolocation error:",
                 error
             );
 
@@ -1747,27 +1753,6 @@ function getCurrentLocationForReport() {
 
 
 function restoreReportLocationButton() {
-
-    const button =
-        document.getElementById(
-            "getLocationBtn"
-        );
-
-
-    if (!button) {
-        return;
-    }
-
-
-    button.disabled = false;
-
-
-    button.innerHTML =
-        button.dataset.originalText ||
-        `
-            <span>◎</span>
-            <span>আমার লোকেশন</span>
-        `;
 }
 
 
@@ -1790,6 +1775,18 @@ function setSelectedLocation(
     ) {
 
         return;
+    }
+
+    const selectedLocationMethod = document.querySelector(
+        'input[name="locationMethod"]:checked'
+    );
+    if (!selectedLocationMethod) {
+        const mapLocationMethod = document.querySelector(
+            'input[name="locationMethod"][value="map"]'
+        );
+        if (mapLocationMethod) {
+            mapLocationMethod.checked = true;
+        }
     }
 
 
@@ -1964,7 +1961,7 @@ function initLocationPickerMap() {
     if (!element) {
 
         console.warn(
-            "[SafeMap] #locationPickerMap not found."
+            "[Madok] #locationPickerMap not found."
         );
 
         return;
@@ -2089,6 +2086,13 @@ function selectMapLocation(
 
 function openLocationPicker() {
 
+    const locationOption = document.querySelector(
+        'input[name="locationMethod"][value="map"]'
+    );
+    if (locationOption) {
+        locationOption.checked = true;
+    }
+
     if (!mapSelectModal) {
         return;
     }
@@ -2192,7 +2196,7 @@ function getUserLocationForPicker() {
         function(error) {
 
             console.warn(
-                "[SafeMap] Picker location unavailable:",
+                "[Madok] Picker location unavailable:",
                 error
             );
 
@@ -2245,6 +2249,13 @@ function confirmMapLocation() {
         selectedMapLocation.lat,
         selectedMapLocation.lng
     );
+
+    const locationOption = document.querySelector(
+        'input[name="locationMethod"][value="map"]'
+    );
+    if (locationOption) {
+        locationOption.checked = true;
+    }
 
 
     closeLocationPicker();
@@ -2537,8 +2548,12 @@ function renderStationTable(
     }
 
 
+    const visibleData = stationTableExpanded
+        ? data
+        : data.slice(0, 15);
+
     tbody.innerHTML =
-        data.map(
+        visibleData.map(
             function(item) {
 
                 const sale =
@@ -2614,7 +2629,30 @@ function renderStationTable(
                     </tr>
                 `;
             }
-        ).join("");
+        ).join("") +
+        (data.length > 15
+            ? `
+                <tr>
+                    <td colspan="6" class="py-4 text-center">
+                        <button
+                            type="button"
+                            id="stationSeeMoreBtn"
+                            class="rounded-lg px-4 py-2 text-xs font-bold text-primary hover:bg-[#f8f7ff]"
+                        >
+                            ${stationTableExpanded ? "See less" : "See more"}
+                        </button>
+                    </td>
+                </tr>
+            `
+            : "");
+
+    const seeMoreButton = document.getElementById("stationSeeMoreBtn");
+    if (seeMoreButton) {
+        seeMoreButton.addEventListener("click", function() {
+            stationTableExpanded = !stationTableExpanded;
+            renderStationTable(data);
+        });
+    }
 }
 
 
@@ -2628,6 +2666,7 @@ function renderFilteredStations() {
             return numberValue(second.total) - numberValue(first.total);
         });
 
+    stationTableExpanded = false;
     renderStationTable(filtered);
 }
 
@@ -2707,7 +2746,7 @@ async function loadStatisticsByDivision(
   try {
 
     console.log(
-      "[SafeMap] Loading statistics for:",
+      "[Madok] Loading statistics for:",
       division
     );
 
@@ -2734,7 +2773,7 @@ async function loadStatisticsByDivision(
 
 
     console.log(
-      "[SafeMap] Statistics HTTP:",
+      "[Madok] Statistics HTTP:",
       response.status
     );
 
@@ -2759,7 +2798,7 @@ async function loadStatisticsByDivision(
     } catch (error) {
 
       console.error(
-        "[SafeMap] Invalid statistics JSON:",
+        "[Madok] Invalid statistics JSON:",
         text
       );
 
@@ -2782,7 +2821,7 @@ async function loadStatisticsByDivision(
      * Save statistics globally
      */
 
-    window.safeMapStatistics = {
+    window.madokStatistics = {
 
       total_reports:
         Number(
@@ -2831,19 +2870,19 @@ async function loadStatisticsByDivision(
      */
 
     updateStatisticsUI(
-      window.safeMapStatistics
+      window.madokStatistics
     );
 
 
     console.log(
-      "[SafeMap] Division statistics loaded:",
-      window.safeMapStatistics
+      "[Madok] Division statistics loaded:",
+      window.madokStatistics
     );
 
   } catch (error) {
 
     console.error(
-      "[SafeMap] Division statistics error:",
+      "[Madok] Division statistics error:",
       error
     );
 
@@ -2908,7 +2947,7 @@ function showToast(
     ) {
 
         console.log(
-            "[SafeMap Toast]",
+            "[Madok Toast]",
             title,
             message
         );
@@ -3114,6 +3153,81 @@ function enableSubmitButton() {
         "রিপোর্ট পাঠান";
 }
 
+function setValidationState(field, errorId, message) {
+    const errorElement = document.getElementById(errorId);
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.classList.remove("hidden");
+    }
+
+    if (field) {
+        field.classList.remove("border-slate-200");
+        field.classList.add("border-red-500");
+    }
+}
+
+function clearValidationState(field, errorId) {
+    const errorElement = document.getElementById(errorId);
+    if (errorElement) {
+        errorElement.textContent = "";
+        errorElement.classList.add("hidden");
+    }
+
+    if (field) {
+        field.classList.remove("border-red-500");
+        field.classList.add("border-slate-200");
+    }
+}
+
+function getReportTypeCards() {
+    return Array.from(
+        document.querySelectorAll('input[name="reportType"]')
+    ).map(function(input) {
+        return input.nextElementSibling;
+    }).filter(Boolean);
+}
+
+function getLocationMethodCards() {
+    return [
+        document.querySelector("#getLocationBtn > span"),
+        document.querySelector("#openMapSelectBtn > span")
+    ].filter(Boolean);
+}
+
+function clearReportTypeValidation() {
+    document.getElementById("reportTypeError")?.classList.add("hidden");
+    document.getElementById("reportTypeError")?.replaceChildren();
+    getReportTypeCards().forEach(function(card) {
+        card.classList.remove("border-red-500");
+        card.classList.add("border-slate-200");
+    });
+}
+
+function clearLocationValidation() {
+    document.getElementById("reportLocationError")?.classList.add("hidden");
+    document.getElementById("reportLocationError")?.replaceChildren();
+    getLocationMethodCards().forEach(function(card) {
+        card.classList.remove("border-red-500");
+        card.classList.add("border-slate-200");
+    });
+}
+
+function getContactCards() {
+    return [
+        document.querySelector("#contactYes + span"),
+        document.querySelector("#contactNo + span")
+    ].filter(Boolean);
+}
+
+function clearContactValidation() {
+    document.getElementById("contactError")?.classList.add("hidden");
+    document.getElementById("contactError")?.replaceChildren();
+    getContactCards().forEach(function(card) {
+        card.classList.remove("border-red-500");
+        card.classList.add("border-slate-200");
+    });
+}
+
 
 /* =========================================================
    REPORT SUBMIT
@@ -3142,6 +3256,68 @@ async function handleReportSubmit(
             ?.trim() ||
         "";
 
+    const reportType = document.querySelector(
+        'input[name="reportType"]:checked'
+    );
+    const locationMethod = document.querySelector(
+        'input[name="locationMethod"]:checked'
+    );
+    const willingToContactChoice = document.querySelector(
+        'input[name="willingToContact"]:checked'
+    );
+
+    if (!reportType) {
+        getReportTypeCards().forEach(function(card) {
+            card.classList.remove("border-slate-200");
+            card.classList.add("border-red-500");
+        });
+        setValidationState(null, "reportTypeError", "দয়া করে রিপোর্টের ধরন সিলেক্ট করুন।");
+    } else {
+        clearReportTypeValidation();
+    }
+
+    if (!title) {
+        setValidationState(titleInput, "reportTitleError", "দয়া করে রিপোর্টের শিরোনাম লিখুন।");
+    } else {
+        clearValidationState(titleInput, "reportTitleError");
+    }
+
+    if (!locationMethod) {
+        getLocationMethodCards().forEach(function(card) {
+            card.classList.remove("border-slate-200");
+            card.classList.add("border-red-500");
+        });
+        setValidationState(null, "reportLocationError", "দয়া করে রিপোর্টের লোকেশন সিলেক্ট করুন।");
+    } else {
+        clearLocationValidation();
+    }
+
+    if (!willingToContactChoice) {
+        getContactCards().forEach(function(card) {
+            card.classList.remove("border-slate-200");
+            card.classList.add("border-red-500");
+        });
+        setValidationState(null, "contactError", "দয়া করে একটি অপশন সিলেক্ট করুন।");
+    } else {
+        clearContactValidation();
+    }
+
+    const firstInvalidField = !reportType
+        ? document.querySelector('input[name="reportType"]')
+        : !title
+            ? titleInput
+            : !locationMethod
+                ? document.querySelector('input[name="locationMethod"]')
+                : !willingToContactChoice
+                    ? document.querySelector('input[name="willingToContact"]')
+                    : null;
+
+    if (firstInvalidField) {
+        firstInvalidField.scrollIntoView({ behavior: "smooth", block: "center" });
+        firstInvalidField.focus({ preventScroll: true });
+        return;
+    }
+
 
     const lat =
         latitudeInput?.value ||
@@ -3157,26 +3333,13 @@ async function handleReportSubmit(
      * Basic validation.
      */
 
-    if (!title) {
-
-        showToast(
-            "শিরোনাম প্রয়োজন",
-            "রিপোর্টের একটি title দিন।"
-        );
-
-        titleInput?.focus();
-
-        return;
-    }
-
-
     if (!lat || !lng) {
-
-        showToast(
-            "লোকেশন প্রয়োজন",
-            "ম্যাপে একটি লোকেশন নির্বাচন করুন।"
-        );
-
+        getLocationMethodCards().forEach(function(card) {
+            card.classList.remove("border-slate-200");
+            card.classList.add("border-red-500");
+        });
+        setValidationState(null, "reportLocationError", "Please select a report location.");
+        document.querySelector('input[name="locationMethod"]')?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
     }
 
@@ -3330,7 +3493,7 @@ async function handleReportSubmit(
     try {
 
         console.log(
-            "[SafeMap] Sending report..."
+            "[Madok] Sending report..."
         );
 
 
@@ -3357,13 +3520,13 @@ async function handleReportSubmit(
 
 
         console.log(
-            "[SafeMap] Report HTTP:",
+            "[Madok] Report HTTP:",
             response.status
         );
 
 
         console.log(
-            "[SafeMap] Report response:",
+            "[Madok] Report response:",
             text
         );
 
@@ -3379,7 +3542,7 @@ async function handleReportSubmit(
         } catch (jsonError) {
 
             console.error(
-                "[SafeMap] Invalid report JSON:",
+                "[Madok] Invalid report JSON:",
                 text
             );
 
@@ -3444,13 +3607,13 @@ async function handleReportSubmit(
 
 
             console.log(
-                "[SafeMap] Backend data refreshed."
+                "[Madok] Backend data refreshed."
             );
 
         } catch (reloadError) {
 
             console.error(
-                "[SafeMap] Refresh after report failed:",
+                "[Madok] Refresh after report failed:",
                 reloadError
             );
 
@@ -3465,7 +3628,7 @@ async function handleReportSubmit(
     } catch (error) {
 
         console.error(
-            "[SafeMap] Report submit error:",
+            "[Madok] Report submit error:",
             error
         );
 
@@ -3662,6 +3825,30 @@ function initEventListeners() {
             "submit",
             handleReportSubmit
         );
+
+        reportForm.addEventListener("input", function(event) {
+            if (event.target.id === "reportTitle") {
+                clearValidationState(event.target, "reportTitleError");
+            }
+        });
+
+        reportForm.addEventListener("change", function(event) {
+            if (event.target.name === "reportType") {
+                clearReportTypeValidation();
+            }
+            if (event.target.name === "locationMethod") {
+                clearLocationValidation();
+            }
+            if (event.target.name === "willingToContact") {
+                clearContactValidation();
+            }
+        });
+
+        reportForm.addEventListener("click", function(event) {
+            if (event.target.closest("#getLocationBtn, #openMapSelectBtn")) {
+                clearLocationValidation();
+            }
+        });
     }
 
 
@@ -3758,10 +3945,10 @@ function initEventListeners() {
    APPLICATION START
    ========================================================= */
 
-async function initSafeMap() {
+async function initMadok() {
 
     console.log(
-        "[SafeMap] Initializing..."
+        "[Madok] Initializing..."
     );
 
 
@@ -3817,7 +4004,7 @@ async function initSafeMap() {
     ) {
 
         console.error(
-            "[SafeMap] Locations load failed:",
+            "[Madok] Locations load failed:",
             results[0].reason
         );
 
@@ -3840,7 +4027,7 @@ async function initSafeMap() {
     ) {
 
         console.error(
-            "[SafeMap] Statistics load failed:",
+            "[Madok] Statistics load failed:",
             results[1].reason
         );
 
@@ -3886,7 +4073,7 @@ async function initSafeMap() {
 
 
     console.log(
-        "[SafeMap] Initialization complete."
+        "[Madok] Initialization complete."
     );
 }
 
@@ -3897,5 +4084,5 @@ async function initSafeMap() {
 
 document.addEventListener(
     "DOMContentLoaded",
-    initSafeMap
+    initMadok
 );

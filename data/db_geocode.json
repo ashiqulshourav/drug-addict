@@ -2,7 +2,7 @@
   {
     "type": "header",
     "version": "1.0.4",
-    "comment": "Export to JSON plugin for [SafeMap]"
+    "comment": "Export to JSON plugin for [Madok]"
   },
   { "type": "database", "name": "drug" },
   {

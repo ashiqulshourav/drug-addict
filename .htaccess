@@ -1,2 +1,7 @@
 Options -Indexes
-DirectoryIndex index.html
+DirectoryIndex index.php
+
+RewriteEngine On
+
+# Keep both clean report URL formats working while the existing HTML page remains reusable.
+RewriteRule ^reports/(?:location=)?([0-9]+)/?$ reports.php?location=$1 [L,QSA,NC]

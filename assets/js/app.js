@@ -289,6 +289,33 @@ function getTypeColor(type) {
     return "#22c55e";
 }
 
+function buildLocationPopup(location) {
+    const stationText = location.station || "থানা / উপজেলা নির্ধারণ করা হয়নি";
+    const reportCount = numberValue(location.reports);
+    const detailUrl = "reports/" + encodeURIComponent(location.id);
+
+    return `
+        <div style="min-width:210px;font-family:'Noto Sans Bengali',Arial,sans-serif;">
+            <div style="display:inline-block;padding:3px 7px;border-radius:5px;background:${getTypeBackground(location.type)};color:${getTypeTextColor(location.type)};font-size:10px;font-weight:700;margin-bottom:7px;">
+                ${escapeHtml(getTypeLabel(location.type))}
+            </div>
+            <strong style="display:block;font-size:13px;line-height:1.5;">
+                ${escapeHtml(location.title)}
+            </strong>
+            <p style="margin:5px 0 0;color:#666;font-size:10px;line-height:1.5;">
+                ${escapeHtml(location.description || "বিস্তারিত তথ্য দেওয়া হয়নি।")}
+            </p>
+            <span style="display:block;color:#777;font-size:10px;margin-top:5px;">
+                ${escapeHtml(stationText)} . ${escapeHtml(location.district || "জেলা নির্ধারণ করা হয়নি")} . ${escapeHtml(location.division || "বিভাগ নির্ধারণ করা হয়নি")}
+            </span>
+            <div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;color:#666;font-size:10px;">
+                মোট রিপোর্ট: <strong>${formatNumber(reportCount)}</strong>
+                <a href="${detailUrl}" style="float:right;color:#5b46e8;font-weight:700;text-decoration:none;">সব রিপোর্ট দেখুন</a>
+            </div>
+        </div>
+    `;
+}
+
 
 /* =========================================================
    MARKER ICON
@@ -610,7 +637,7 @@ function renderMarkers() {
                 );
 
             const detailUrl =
-                "reports.html?location=" +
+                "reports/" +
                 encodeURIComponent(location.id);
 
 
@@ -795,68 +822,7 @@ function renderHeroMarkers() {
                 ).addTo(heroMap);
 
 
-            marker.bindPopup(`
-                <div
-                    style="
-                        min-width:180px;
-                        font-family:
-                            'Noto Sans Bengali',
-                            Arial,
-                            sans-serif;
-                    "
-                >
-
-                    <div
-                        style="
-                            display:inline-block;
-                            padding:3px 7px;
-                            border-radius:5px;
-                            background:
-                                ${getTypeBackground(
-                                    location.type
-                                )};
-                            color:
-                                ${getTypeTextColor(
-                                    location.type
-                                )};
-                            font-size:10px;
-                            font-weight:700;
-                            margin-bottom:6px;
-                        "
-                    >
-                        ${escapeHtml(
-                            getTypeLabel(
-                                location.type
-                            )
-                        )}
-                    </div>
-
-
-                    <strong
-                        style="
-                            display:block;
-                            font-size:12px;
-                        "
-                    >
-                        ${escapeHtml(
-                            location.title
-                        )}
-                    </strong>
-
-
-                    <span
-                        style="
-                            display:block;
-                            margin-top:4px;
-                            color:#777;
-                            font-size:10px;
-                        "
-                    >
-                            ${escapeHtml(location.station || "Station unavailable")}
-                    </span>
-
-                </div>
-            `);
+            marker.bindPopup(buildLocationPopup(location));
 
 
             heroMapMarkers.push(marker);
@@ -1232,6 +1198,7 @@ async function loadBackendData() {
         window.madokStatistics
     );
 
+    renderLocationHighlights(result, true);
 
     populateReportDistricts();
     renderFilteredStations();
@@ -1340,6 +1307,58 @@ function updateStatisticsUI(stats) {
         heroTotalReports.textContent =
             formatNumber(stats.total_reports);
     }
+}
+
+function renderLocationHighlights(result, resetVisible = false) {
+    const groups = [
+        ["lastReportedLocations", result.last_reported_locations || []],
+        ["mostReportedLocations", result.most_reported_locations || []]
+    ];
+
+    groups.forEach(([elementId, locations]) => {
+        const container = document.getElementById(elementId);
+        if (!container) {
+            return;
+        }
+
+        if (resetVisible || !container.dataset.visibleCount) {
+            container.dataset.visibleCount = "1";
+        }
+
+        const visibleCount = Number(container.dataset.visibleCount || 1);
+        const visibleLocations = locations.slice(0, visibleCount);
+        const canToggle = locations.length > 1;
+
+        container.innerHTML = visibleLocations.length
+            ? visibleLocations.map(location => `
+                <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <span class="inline-block rounded-md px-2 py-1 text-[10px] font-bold" style="background:${getTypeBackground(location.type)};color:${getTypeTextColor(location.type)}">
+                                ${escapeHtml(getTypeLabel(location.type))}
+                            </span>
+                            <h4 class="mt-2 truncate text-sm font-extrabold">${escapeHtml(location.title)}</h4>
+                            <p class="mt-1 text-xs text-slate-500">${escapeHtml(location.station || "থানা / উপজেলা নির্ধারণ করা হয়নি")} . ${escapeHtml(location.district || "জেলা নির্ধারণ করা হয়নি")} . ${escapeHtml(location.division || "বিভাগ নির্ধারণ করা হয়নি")}</p>
+                        </div>
+                        <strong class="shrink-0 text-sm text-primary">${formatNumber(location.reports)} রিপোর্ট</strong>
+                    </div>
+                    <a href="reports/${encodeURIComponent(location.id)}" class="mt-3 inline-block text-xs font-bold text-primary hover:underline">সব রিপোর্ট দেখুন</a>
+                </article>
+            `).join("") + (canToggle ? `
+                <button type="button" class="highlight-toggle mt-1 text-xs font-bold text-primary hover:underline" data-target="${elementId}">
+                    ${visibleCount === 1 ? "সবগুলো দেখুন" : "শুধু ১টি দেখুন"}
+                </button>
+            ` : "")
+            : '<p class="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">এখনও কোনো রিপোর্ট পাওয়া যায়নি।</p>';
+
+        const toggleButton = container.querySelector(".highlight-toggle");
+        if (toggleButton) {
+            toggleButton.addEventListener("click", () => {
+                container.dataset.visibleCount = visibleCount === 1 ? String(locations.length) : "1";
+                renderLocationHighlights(result);
+            });
+        }
+    });
 }
 
 
@@ -2872,6 +2891,8 @@ async function loadStatisticsByDivision(
     updateStatisticsUI(
       window.madokStatistics
     );
+
+    renderLocationHighlights(result, true);
 
 
     console.log(

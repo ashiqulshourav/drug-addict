@@ -33,13 +33,13 @@ try {
             ps.name AS police_station,
 
             COALESCE(ud.id, sd.id) AS district_id,
-            COALESCE(ud.name, sd.name) AS district,
+            COALESCE(NULLIF(ud.bn_name, ''), NULLIF(sd.bn_name, ''), ud.name, sd.name) AS district,
 
             u.id AS upazila_id,
             u.name AS upazila,
 
             COALESCE(udv.id, sdv.id) AS division_id,
-            COALESCE(udv.name, sdv.name) AS division,
+            COALESCE(NULLIF(udv.bn_name, ''), NULLIF(sdv.bn_name, ''), udv.name, sdv.name) AS division,
             COALESCE(udv.slug, sdv.slug) AS division_slug
 
         FROM locations l

@@ -301,6 +301,33 @@
       </div>
     </section>
 
+    <section id="locationHighlights" class="bg-slate-50 py-14 md:py-16">
+      <div class="mx-auto w-[min(1180px,calc(100%-40px))]">
+        <div class="mb-7">
+          <span class="text-[11px] font-extrabold tracking-[1.5px] text-primary"
+            >LOCATION HIGHLIGHTS</span
+          >
+          <h2 class="mt-1 text-3xl font-extrabold tracking-tight">
+            রিপোর্ট করা লোকেশনের সাম্প্রতিক তথ্য
+          </h2>
+        </div>
+        <div class="grid gap-5 lg:grid-cols-2">
+          <div>
+            <h3 class="mb-3 text-lg font-extrabold">
+              সর্বশেষ ৫টি রিপোর্ট করা লোকেশন
+            </h3>
+            <div id="lastReportedLocations" class="space-y-3"></div>
+          </div>
+          <div>
+            <h3 class="mb-3 text-lg font-extrabold">
+              সবচেয়ে বেশি রিপোর্ট করা ২টি লোকেশন
+            </h3>
+            <div id="mostReportedLocations" class="space-y-3"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="map-section" class="py-16 md:py-20">
       <div class="mx-auto w-[min(1180px,calc(100%-40px))]">
         <div
@@ -1089,6 +1116,6 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin=""
     ></script>
-    <script src="app.js?v=2.0.0"></script>
+    <script src="./assets/js/app.js?v=2.0.1"></script>
   </body>
 </html>

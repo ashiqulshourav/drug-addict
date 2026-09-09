@@ -21,9 +21,9 @@ try {
             r.created_at,
             l.report_count,
             ps.name AS station,
-            COALESCE(ud.name, sd.name) AS district,
-            u.name AS upazila,
-            COALESCE(udv.name, sdv.name) AS division
+            COALESCE(NULLIF(ud.bn_name, ''), NULLIF(sd.bn_name, ''), ud.name, sd.name) AS district,
+            COALESCE(NULLIF(u.bn_name, ''), u.name) AS upazila,
+            COALESCE(NULLIF(udv.bn_name, ''), NULLIF(sdv.bn_name, ''), udv.name, sdv.name) AS division
         FROM reports r
         INNER JOIN locations l ON l.id = r.location_id
         LEFT JOIN police_stations ps ON ps.id = l.police_station_id

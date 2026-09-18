@@ -9,8 +9,7 @@ try {
 
     $pdo = db();
 
-    $sql = "
-        SELECT
+    $sql = "SELECT
             l.id,
             l.latitude,
             l.longitude,

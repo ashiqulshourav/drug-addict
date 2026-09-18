@@ -75,7 +75,9 @@
           ? "bg-red-50 text-red-700"
           : "bg-yellow-50 text-yellow-700";
       const params = new URLSearchParams(location.search);
-      const cleanRouteMatch = location.pathname.match(/\/reports\/(?:location=)?([0-9]+)\/?$/i);
+      const cleanRouteMatch = location.pathname.match(
+        /\/reports\/(?:location=)?([0-9]+)\/?$/i,
+      );
       const locationId = params.get("location") || cleanRouteMatch?.[1];
       const appBase = location.pathname.includes("/reports/")
         ? location.pathname.split("/reports/")[0]
@@ -101,7 +103,7 @@
           throw new Error(result.message || "রিপোর্ট load করা যায়নি।");
 
         const place = result.location;
-        summary.innerHTML = `<div class="border-b border-slate-200 pb-5"><p class="mb-2 text-[12px] font-extrabold tracking-[1.5px] text-[#5b46e8]">ALL REPORTS</p><h1 class="m-0 text-3xl font-extrabold">এই লোকেশনের সব রিপোর্ট</h1><p class="mt-2 text-sm text-slate-500">${escapeHtml(place.upazila || place.station || "লোকেশন")} . ${escapeHtml(place.district || "")} . ${escapeHtml(place.division || "")}</p><p class="mt-1 text-sm font-bold text-slate-600">মোট রিপোর্ট: ${Number(place.total).toLocaleString("en-US")}</p></div>`;
+        summary.innerHTML = `<div class="border-b border-slate-200 pb-5"><p class="mb-2 text-[12px] font-extrabold tracking-[1.5px] text-[#5b46e8]">ALL REPORTS</p><h1 class="m-0 text-3xl font-extrabold">এই লোকেশনের সব রিপোর্ট</h1><p class="mt-2 text-sm text-slate-500">${escapeHtml(place.upazila || place.station || "লোকেশন")} . ${escapeHtml(place.district || "")} . ${escapeHtml(place.division || "")}</p><p class="mt-2 text-sm font-bold text-red-500">মোট রিপোর্ট: ${Number(place.total).toLocaleString("en-US")}</p></div>`;
         list.innerHTML = result.reports
           .map(
             (report) =>

@@ -18,7 +18,10 @@ try {
             r.title,
             r.description,
             r.image_path,
+            r.ip_hash,
             r.created_at,
+            l.latitude,
+            l.longitude,
             l.report_count,
             ps.name AS station,
             COALESCE(NULLIF(ud.bn_name, ''), NULLIF(sd.bn_name, ''), ud.name, sd.name) AS district,
@@ -46,6 +49,8 @@ try {
                 'district' => $row['district'],
                 'upazila' => $row['upazila'],
                 'division' => $row['division'],
+                'lat' => (float) $row['latitude'],
+                'lng' => (float) $row['longitude'],
                 'total' => (int) $row['report_count']
             ];
         }
@@ -56,6 +61,7 @@ try {
             'title' => (string) $row['title'],
             'description' => $row['description'] !== null ? (string) $row['description'] : '',
             'image' => $row['image_path'] !== null ? (string) $row['image_path'] : null,
+            'can_edit' => hash_equals((string) ($row['ip_hash'] ?? ''), ip_hash()),
             'created_at' => (string) $row['created_at']
         ];
     }

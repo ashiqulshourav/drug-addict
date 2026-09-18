@@ -3328,6 +3328,10 @@ async function handleReportSubmit(
 
         resetFormState();
 
+        window.location.href =
+            "reports/" +
+            encodeURIComponent(result.location_id);
+
 
         /*
          * Reload both APIs.

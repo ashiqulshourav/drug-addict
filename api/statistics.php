@@ -397,8 +397,8 @@ try {
         ? ''
         : 'WHERE COALESCE(udv.slug, sdv.slug) = ?';
 
-    $rankedLocationSql = "
-        SELECT
+    $rankedLocationSql = 
+            "SELECT
             l.id,
             l.title,
             l.type,

@@ -29,11 +29,9 @@ const demoLocations = [];
 const stationData = [];
 
 let map = null;
-let heroMap = null;
 let locationPickerMap = null;
 
 let mapMarkers = [];
-let heroMapMarkers = [];
 
 let selectedMapMarker = null;
 let userLocationMarker = null;
@@ -444,88 +442,6 @@ function initMap() {
 
 
 /* =========================================================
-   HERO MAP
-   ========================================================= */
-
-function initHeroMap() {
-
-    const heroMapElement =
-        document.getElementById("heroMap");
-
-    if (!heroMapElement) {
-
-        console.warn(
-            "[Madok] #heroMap not found."
-        );
-
-        return;
-    }
-
-
-    if (heroMap) {
-        return;
-    }
-
-
-    if (
-        typeof L === "undefined"
-    ) {
-
-        console.error(
-            "[Madok] Leaflet is not loaded."
-        );
-
-        return;
-    }
-
-
-    heroMap = L.map(
-        heroMapElement,
-        {
-            zoomControl: false,
-            attributionControl: true,
-
-            scrollWheelZoom: false,
-            doubleClickZoom: false,
-            boxZoom: false,
-            keyboard: false,
-
-            dragging: true,
-            touchZoom: true
-        }
-    ).setView(
-        DEFAULT_CENTER,
-        DEFAULT_ZOOM
-    );
-
-
-    L.tileLayer(
-        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-            maxZoom: 19,
-
-            attribution:
-                "&copy; OpenStreetMap"
-        }
-    ).addTo(heroMap);
-
-
-    setTimeout(
-        function() {
-
-            if (heroMap) {
-                heroMap.invalidateSize();
-            }
-
-            renderHeroMarkers();
-
-        },
-        200
-    );
-}
-
-
-/* =========================================================
    MAIN MAP MARKERS
    ========================================================= */
 
@@ -751,124 +667,6 @@ function renderMarkers() {
 
 
 /* =========================================================
-   HERO MAP MARKERS
-   ========================================================= */
-
-function renderHeroMarkers() {
-
-    if (!heroMap) {
-        return;
-    }
-
-
-    heroMapMarkers.forEach(
-        function(marker) {
-
-            try {
-                heroMap.removeLayer(marker);
-            } catch (error) {
-                // Ignore removed marker.
-            }
-        }
-    );
-
-
-    heroMapMarkers = [];
-
-
-    if (!demoLocations.length) {
-
-        heroMap.setView(
-            DEFAULT_CENTER,
-            DEFAULT_ZOOM
-        );
-
-        return;
-    }
-
-
-    const bounds = [];
-
-
-    demoLocations.forEach(
-        function(location) {
-
-            const lat =
-                numberValue(location.lat);
-
-            const lng =
-                numberValue(location.lng);
-
-
-            if (
-                lat < -90 ||
-                lat > 90 ||
-                lng < -180 ||
-                lng > 180
-            ) {
-                return;
-            }
-
-
-            const marker =
-                L.marker(
-                    [lat, lng],
-                    {
-                        icon:
-                            createMarkerIcon(
-                                location.type
-                            )
-                    }
-                ).addTo(heroMap);
-
-
-            marker.bindPopup(buildLocationPopup(location));
-
-
-            heroMapMarkers.push(marker);
-
-            bounds.push([
-                lat,
-                lng
-            ]);
-        }
-    );
-
-
-    if (!bounds.length) {
-
-        heroMap.setView(
-            DEFAULT_CENTER,
-            DEFAULT_ZOOM
-        );
-
-        return;
-    }
-
-
-    if (bounds.length === 1) {
-
-        heroMap.setView(
-            bounds[0],
-            13
-        );
-
-        return;
-    }
-
-
-    heroMap.fitBounds(
-        bounds,
-        {
-            padding: [25, 25],
-
-            maxZoom: 13
-        }
-    );
-}
-
-
-/* =========================================================
    LOAD LOCATIONS
    ========================================================= */
 
@@ -1016,8 +814,6 @@ async function loadMapLocations() {
 
 
     renderMarkers();
-
-    renderHeroMarkers();
 
 
     return result;
@@ -1322,16 +1118,16 @@ function renderLocationHighlights(result, resetVisible = false) {
         }
 
         if (resetVisible || !container.dataset.visibleCount) {
-            container.dataset.visibleCount = "1";
+            container.dataset.visibleCount = "2";
         }
 
-        const visibleCount = Number(container.dataset.visibleCount || 1);
+        const visibleCount = Number(container.dataset.visibleCount || 2);
         const visibleLocations = locations.slice(0, visibleCount);
         const canToggle = locations.length > 1;
 
         container.innerHTML = visibleLocations.length
             ? visibleLocations.map(location => `
-                <article class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <a href="reports/${encodeURIComponent(location.id)}" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm block">
                     <div class="flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <span class="inline-block rounded-md px-2 py-1 text-[10px] font-bold" style="background:${getTypeBackground(location.type)};color:${getTypeTextColor(location.type)}">
@@ -1340,13 +1136,16 @@ function renderLocationHighlights(result, resetVisible = false) {
                             <h4 class="mt-2 truncate text-sm font-extrabold">${escapeHtml(location.title)}</h4>
                             <p class="mt-1 text-xs text-slate-500">${escapeHtml(location.station || "থানা / উপজেলা নির্ধারণ করা হয়নি")} . ${escapeHtml(location.district || "জেলা নির্ধারণ করা হয়নি")} . ${escapeHtml(location.division || "বিভাগ নির্ধারণ করা হয়নি")}</p>
                         </div>
-                        <strong class="shrink-0 text-sm text-primary">${formatNumber(location.reports)} রিপোর্ট</strong>
+                        <div class="flex flex-col items-end">
+                            <strong class="shrink-0 text-sm text-red-500">${formatNumber(location.reports)} রিপোর্ট</strong>
+                            <span class="mt-3 inline-block text-xs font-bold text-primary hover:underline">সব রিপোর্ট দেখুন</span>
+                        </div>
+                        
                     </div>
-                    <a href="reports/${encodeURIComponent(location.id)}" class="mt-3 inline-block text-xs font-bold text-primary hover:underline">সব রিপোর্ট দেখুন</a>
-                </article>
+                </a>
             `).join("") + (canToggle ? `
                 <button type="button" class="highlight-toggle mt-1 text-xs font-bold text-primary hover:underline" data-target="${elementId}">
-                    ${visibleCount === 1 ? "সবগুলো দেখুন" : "শুধু ১টি দেখুন"}
+                    ${visibleCount === 2 ? "সবগুলো দেখুন" : "শুধু ১টি দেখুন"}
                 </button>
             ` : "")
             : '<p class="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500">এখনও কোনো রিপোর্ট পাওয়া যায়নি।</p>';
@@ -1354,7 +1153,7 @@ function renderLocationHighlights(result, resetVisible = false) {
         const toggleButton = container.querySelector(".highlight-toggle");
         if (toggleButton) {
             toggleButton.addEventListener("click", () => {
-                container.dataset.visibleCount = visibleCount === 1 ? String(locations.length) : "1";
+                container.dataset.visibleCount = visibleCount === 2 ? String(locations.length) : "2";
                 renderLocationHighlights(result);
             });
         }
@@ -1381,18 +1180,11 @@ function locateUser(targetId = "map") {
     }
 
 
-    const button = document.getElementById(
-        targetId === "heroMap" ? "locateMeBtn" : "mapLocateBtn"
-    );
+    const button = document.getElementById("mapLocateBtn");
 
 
     if (button) {
         button.disabled = true;
-
-        if (targetId === "heroMap") {
-            button.dataset.originalText = button.innerHTML;
-            button.innerHTML = "◎ লোকেশন নেওয়া হচ্ছে...";
-        }
     }
 
 
@@ -1416,38 +1208,13 @@ function locateUser(targetId = "map") {
                 !Number.isFinite(lng)
             ) {
 
-                restoreLocateButton(targetId);
-
                 showToast(
                     "লোকেশন পাওয়া যায়নি",
                     "সঠিক coordinates পাওয়া যায়নি।"
                 );
 
                 return;
-            }
-
-
-            /*
-             * HERO MAP
-             */
-
-            if (!heroMap) {
-
-                initHeroMap();
-            }
-
-
-            if (!heroMap) {
-
-                restoreLocateButton(targetId);
-
-                showToast(
-                    "Map প্রস্তুত নয়",
-                    "Hero Map initialize করা যায়নি।"
-                );
-
-                return;
-            }
+            }            
 
 
             /*
@@ -1460,7 +1227,7 @@ function locateUser(targetId = "map") {
 
                 try {
 
-                    heroMap.removeLayer(
+                    map.removeLayer(
                         userLocationMarker
                     );
 
@@ -1500,7 +1267,7 @@ function locateUser(targetId = "map") {
                     }
 
                 ).addTo(
-                    heroMap
+                    map
                 );
 
 
@@ -1513,7 +1280,7 @@ function locateUser(targetId = "map") {
              * CENTER HERO MAP
              */
 
-            heroMap.setView(
+            map.setView(
 
                 [lat, lng],
 
@@ -1558,22 +1325,6 @@ function locateUser(targetId = "map") {
                 },
                 500
             );
-
-
-            setTimeout(
-                function() {
-
-                    if (heroMap) {
-
-                        heroMap.invalidateSize();
-                    }
-
-                },
-                200
-            );
-
-
-            restoreLocateButton(targetId);
 
             document.getElementById(targetId)?.scrollIntoView({
                 behavior: "smooth",
@@ -1650,33 +1401,6 @@ function locateUser(targetId = "map") {
 
 function locateUserOnMainMap() {
     locateUser("map");
-}
-
-function locateUserOnHeroMap() {
-    locateUser("heroMap");
-}
-
-function restoreLocateButton(targetId = "heroMap") {
-
-    const button =
-        document.getElementById(
-            targetId === "map" ? "mapLocateBtn" : "locateMeBtn"
-        );
-
-
-    if (!button) {
-        return;
-    }
-
-
-    button.disabled = false;
-
-
-    if (targetId === "heroMap") {
-        button.innerHTML =
-            button.dataset.originalText ||
-            "◎ আমার অবস্থান";
-    }
 }
 
 
@@ -2741,7 +2465,7 @@ function populateReportDistricts() {
             }
         });
 
-    reportDistrictSelect.innerHTML = '<option value="all">All districts</option>' +
+    reportDistrictSelect.innerHTML = '<option value="all">সকল জেলা</option>' +
         Array.from(districts.entries())
             .sort((first, second) => first[1].localeCompare(second[1]))
             .map(([id, name]) => `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`)
@@ -3624,8 +3348,6 @@ async function handleReportSubmit(
 
             renderMarkers();
 
-            renderHeroMarkers();
-
 
             console.log(
                 "[Madok] Backend data refreshed."
@@ -3742,14 +3464,13 @@ function initEventListeners() {
      * It does NOT use getCurrentLocation().
      * It does NOT use locateUserFromHero().
      */
-
     bindClick(
-        "locateMeBtn",
-        locateUserOnHeroMap
+        "mapLocateBtn",
+        locateUserOnMainMap
     );
 
     bindClick(
-        "mapLocateBtn",
+        "locateMeBtn",
         locateUserOnMainMap
     );
 
@@ -3986,9 +3707,6 @@ async function initMadok() {
 
     initMap();
 
-    initHeroMap();
-
-
     /*
      * Bind all events exactly once.
      */
@@ -4067,8 +3785,6 @@ async function initMadok() {
 
     renderMarkers();
 
-    renderHeroMarkers();
-
     populateReportDistricts();
     renderFilteredStations();
 
@@ -4082,10 +3798,6 @@ async function initMadok() {
 
             if (map) {
                 map.invalidateSize();
-            }
-
-            if (heroMap) {
-                heroMap.invalidateSize();
             }
 
         },

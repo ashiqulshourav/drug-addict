@@ -569,6 +569,7 @@ try {
         'message' => 'রিপোর্ট সফলভাবে গ্রহণ করা হয়েছে।',
         'report_id' => $reportId,
         'location_id' => $locationId,
+        'can_edit' => true,
         'merged_with_existing_location' => $merged
     ]);
 } catch (Throwable $e) {

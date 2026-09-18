@@ -11,9 +11,29 @@
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
     <style>
       body {
         font-family: "Noto Sans Bengali", Arial, sans-serif;
+      }
+      .custom-marker {
+        width: 35px;
+        height: 35px;
+        display: grid;
+        place-items: center;
+        border: 3px solid white;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
+      }
+      .custom-marker span {
+        color: white;
+        transform: rotate(45deg);
+        font-weight: 800;
       }
     </style>
   </head>
@@ -49,6 +69,52 @@
       <div id="reportsList" class="space-y-4">
         <p class="text-sm text-slate-500">রিপোর্ট লোড হচ্ছে...</p>
       </div>
+      <section
+        class="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      >
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4"
+        >
+          <div>
+            <h2 class="text-base font-extrabold">রিপোর্টের মানচিত্র</h2>
+            <p class="text-xs text-slate-500">সব রিপোর্টের লোকেশন দেখুন</p>
+          </div>
+          <div class="flex gap-2">
+            <button
+              class="filter-btn rounded-lg bg-[#5b46e8] px-3 py-2 text-xs font-bold text-white"
+              data-filter="all"
+            >
+              সব
+            </button>
+            <button
+              class="filter-btn rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600"
+              data-filter="sale"
+            >
+              বেচাকেনা
+            </button>
+            <button
+              class="filter-btn rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600"
+              data-filter="use"
+            >
+              সেবন
+            </button>
+          </div>
+        </div>
+        <div class="relative">
+          <div id="reportsMap" class="h-[360px] w-full md:h-[430px]"></div>
+          <button
+            id="mapLocateBtn"
+            type="button"
+            title="আমার বর্তমান অবস্থান"
+            aria-label="আমার বর্তমান অবস্থান"
+            class="absolute bottom-4 right-3 z-[500] grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-black/95 text-white shadow-xl"
+          >
+            <span
+              class="rounded-full border-[3px] border-white bg-[#5b46e8] p-1"
+            ></span>
+          </button>
+        </div>
+      </section>
     </main>
 
     <footer class="bg-[#121625] py-7 text-white">
@@ -60,6 +126,95 @@
       </div>
     </footer>
 
+    <div
+      id="imageModal"
+      class="fixed inset-0 z-[2000] hidden items-center justify-center bg-black/70 p-4"
+    >
+      <div
+        class="relative max-h-[90vh] w-full max-w-3xl rounded-2xl bg-white p-3 shadow-2xl"
+      >
+        <button
+          id="closeImageModal"
+          class="absolute right-3 top-3 z-10 rounded-full bg-black/70 px-3 py-1 text-lg text-white"
+          aria-label="ছবি বন্ধ করুন"
+        >
+          ×</button
+        ><img
+          id="modalImage"
+          src=""
+          alt="রিপোর্টের ছবি"
+          class="max-h-[84vh] w-full rounded-xl object-contain"
+        />
+      </div>
+    </div>
+    <div
+      id="editModal"
+      class="fixed inset-0 z-[2100] hidden items-center justify-center bg-black/50 p-4"
+    >
+      <form
+        id="editForm"
+        class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"
+      >
+        <div class="mb-5 flex items-center justify-between">
+          <h2 class="text-lg font-extrabold">রিপোর্ট edit করুন</h2>
+          <button
+            type="button"
+            id="closeEditModal"
+            class="text-2xl text-slate-400"
+          >
+            ×
+          </button>
+        </div>
+        <input type="hidden" name="reportId" /><label
+          class="mb-4 block text-sm font-bold"
+          >শিরোনাম<input
+            name="title"
+            required
+            maxlength="160"
+            class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2" /></label
+        ><label class="mb-4 block text-sm font-bold"
+          >বিবরণ<textarea
+            name="description"
+            maxlength="1000"
+            rows="4"
+            class="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2"
+          ></textarea></label
+        ><label class="mb-5 block text-sm font-bold"
+          >নতুন ছবি<input
+            name="image"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            class="mt-2 block w-full text-sm" /></label
+        ><label class="mb-5 flex items-center gap-2 text-sm"
+          ><input name="removeImage" type="checkbox" value="1" /> বর্তমান ছবি
+          মুছে দিন</label
+        >
+        <div class="flex justify-end gap-2">
+          <button
+            type="button"
+            id="deleteReportBtn"
+            class="mr-auto rounded-lg bg-red-50 px-4 py-2 text-sm font-bold text-red-700"
+          >
+            ডিলিট</button
+          ><button
+            type="button"
+            id="cancelEditBtn"
+            class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold"
+          >
+            বাতিল</button
+          ><button
+            class="rounded-lg bg-[#5b46e8] px-4 py-2 text-sm font-bold text-white"
+          >
+            Update
+          </button>
+        </div>
+        <p id="editError" class="mt-3 text-sm text-red-600"></p>
+      </form>
+    </div>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
     <script>
       const escapeHtml = (value) =>
         String(value ?? "")
@@ -91,6 +246,122 @@
       };
       const summary = document.getElementById("locationSummary");
       const list = document.getElementById("reportsList");
+      const mapElement = document.getElementById("reportsMap");
+      let reports = [];
+      let allLocations = [];
+      let activeFilter = "all";
+      let reportsMap = null;
+      let reportMarkers = [];
+      let editingReport = null;
+      let reportedLocation = null;
+
+      const typeColor = (type) =>
+        type === "sale" ? "#ef4444" : type === "use" ? "#facc15" : "#22c55e";
+      const markerIcon = (type) =>
+        L.divIcon({
+          className: "",
+          html: `<div class="custom-marker" style="background:${typeColor(type)}"><span>${type === "sale" ? "↗" : "●"}</span></div>`,
+          iconSize: [35, 35],
+          iconAnchor: [17, 35],
+        });
+      const setModal = (element, open) => {
+        element.classList.toggle("hidden", !open);
+        element.classList.toggle("flex", open);
+      };
+      function drawMarkers() {
+        reportMarkers.forEach((marker) => reportsMap.removeLayer(marker));
+        reportMarkers = [];
+        allLocations
+          .filter(
+            (item) =>
+              activeFilter === "all" ||
+              item.type === activeFilter ||
+              item.type === "both",
+          )
+          .forEach((item) => {
+            const marker = L.marker([Number(item.lat), Number(item.lng)], {
+              icon: markerIcon(item.type),
+            }).addTo(reportsMap);
+            marker.bindPopup(
+              `<strong>${escapeHtml(item.title)}</strong><br><span>${Number(item.reports).toLocaleString("en-US")} রিপোর্ট</span>`,
+            );
+            reportMarkers.push(marker);
+          });
+      }
+      function initReportsMap() {
+        const initialCenter = reportedLocation
+          ? [reportedLocation.lat, reportedLocation.lng]
+          : [23.8103, 90.4125];
+        reportsMap = L.map(mapElement).setView(
+          initialCenter,
+          reportedLocation ? 14 : 7,
+        );
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: "&copy; OpenStreetMap",
+        }).addTo(reportsMap);
+        drawMarkers();
+        setTimeout(() => reportsMap.invalidateSize(), 150);
+      }
+      function locateUser() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(
+          (position) =>
+            reportsMap.setView(
+              [position.coords.latitude, position.coords.longitude],
+              16,
+              { animate: true },
+            ),
+          () => alert("আপনার বর্তমান লোকেশন পাওয়া যায়নি।"),
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+        );
+      }
+      function openImage(path) {
+        document.getElementById("modalImage").src = imageUrl(path);
+        setModal(document.getElementById("imageModal"), true);
+      }
+      function openEdit(report) {
+        editingReport = report;
+        const form = document.getElementById("editForm");
+        form.reportId.value = report.id;
+        form.title.value = report.title;
+        form.description.value = report.description || "";
+        form.removeImage.checked = false;
+        form.image.value = "";
+        document.getElementById("editError").textContent = "";
+        setModal(document.getElementById("editModal"), true);
+      }
+      async function saveEdit(event) {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        data.append("action", "update");
+        const response = await fetch(`${appBase}/api/report-edit.php`, {
+          method: "POST",
+          body: data,
+          headers: { Accept: "application/json" },
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok)
+          throw new Error(result.message || "Update failed");
+        setModal(document.getElementById("editModal"), false);
+        await loadReports();
+      }
+      async function deleteReport() {
+        if (!editingReport || !confirm("এই রিপোর্টটি ডিলিট করবেন?")) return;
+        const data = new FormData();
+        data.append("reportId", editingReport.id);
+        data.append("action", "delete");
+        const response = await fetch(`${appBase}/api/report-edit.php`, {
+          method: "POST",
+          body: data,
+          headers: { Accept: "application/json" },
+        });
+        const result = await response.json();
+        if (!response.ok || !result.ok)
+          throw new Error(result.message || "Delete failed");
+        location.href = `${appBase}/`;
+      }
 
       async function loadReports() {
         if (!locationId) throw new Error("লোকেশন পাওয়া যায়নি।");
@@ -103,15 +374,94 @@
           throw new Error(result.message || "রিপোর্ট load করা যায়নি।");
 
         const place = result.location;
+        reportedLocation = { lat: Number(place.lat), lng: Number(place.lng) };
+        if (
+          reportsMap &&
+          Number.isFinite(reportedLocation.lat) &&
+          Number.isFinite(reportedLocation.lng)
+        ) {
+          reportsMap.setView([reportedLocation.lat, reportedLocation.lng], 14, {
+            animate: true,
+          });
+        }
+        reports = result.reports;
         summary.innerHTML = `<div class="border-b border-slate-200 pb-5"><p class="mb-2 text-[12px] font-extrabold tracking-[1.5px] text-[#5b46e8]">ALL REPORTS</p><h1 class="m-0 text-3xl font-extrabold">এই লোকেশনের সব রিপোর্ট</h1><p class="mt-2 text-sm text-slate-500">${escapeHtml(place.upazila || place.station || "লোকেশন")} . ${escapeHtml(place.district || "")} . ${escapeHtml(place.division || "")}</p><p class="mt-2 text-sm font-bold text-red-500">মোট রিপোর্ট: ${Number(place.total).toLocaleString("en-US")}</p></div>`;
-        list.innerHTML = result.reports
+        list.innerHTML = reports
           .map(
             (report) =>
-              `<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-start justify-between gap-3"><div><span class="inline-block rounded-md px-2 py-1 text-[12px] font-bold ${typeStyles(report.type)}">${typeLabel(report.type)}</span><h2 class="mt-3 text-base font-bold">${escapeHtml(report.title)}</h2></div><time class="shrink-0 text-[12px] text-slate-400">${escapeHtml(report.created_at)}</time></div><p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">${escapeHtml(report.description || "বিস্তারিত তথ্য দেওয়া হয়নি।")}</p>${report.image ? `<img src="${escapeHtml(imageUrl(report.image))}" alt="রিপোর্টের ছবি" loading="lazy" class="mt-4 max-h-64 w-full rounded-xl object-contain bg-slate-100" />` : ""}</div>`,
+              `<div class="overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><div class="flex items-center gap-2"><span class="inline-block rounded-md px-2 py-1 text-[12px] font-bold ${typeStyles(report.type)}">${report.image ? '<span title="ছবি আছে" aria-label="ছবি আছে">▣</span> ' : ""}${typeLabel(report.type)}</span></div><h2 class="mt-3 text-base font-bold">${escapeHtml(report.title)}</h2></div><time class="shrink-0 text-[12px] text-slate-400">${escapeHtml(report.created_at)}</time></div><p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600">${escapeHtml(report.description || "বিস্তারিত তথ্য দেওয়া হয়নি।")}</p><div class="mt-4 flex items-center justify-end gap-2">${report.can_edit ? `<button data-edit="${report.id}" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">Edit</button>` : ""}${report.image ? `<button data-image="${escapeHtml(report.image)}" class="rounded-lg bg-[#5b46e8] px-3 py-2 text-xs font-bold text-white">ছবি দেখুন</button>` : ""}</div></div>`,
           )
           .join("");
+        list
+          .querySelectorAll("[data-image]")
+          .forEach((button) =>
+            button.addEventListener("click", () =>
+              openImage(button.dataset.image),
+            ),
+          );
+        list
+          .querySelectorAll("[data-edit]")
+          .forEach((button) =>
+            button.addEventListener("click", () =>
+              openEdit(
+                reports.find(
+                  (report) => String(report.id) === button.dataset.edit,
+                ),
+              ),
+            ),
+          );
       }
-      loadReports().catch((error) => {
+      async function loadAllLocations() {
+        const response = await fetch(`${appBase}/api/locations.php`, {
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
+        const result = await response.json();
+        if (result.ok) {
+          allLocations = result.locations || [];
+          initReportsMap();
+        }
+      }
+      document.querySelectorAll(".filter-btn").forEach((button) =>
+        button.addEventListener("click", () => {
+          activeFilter = button.dataset.filter;
+          document
+            .querySelectorAll(".filter-btn")
+            .forEach((item) =>
+              item.classList.toggle("bg-[#5b46e8]", item === button),
+            );
+          drawMarkers();
+        }),
+      );
+      document
+        .getElementById("mapLocateBtn")
+        .addEventListener("click", locateUser);
+      document
+        .getElementById("closeImageModal")
+        .addEventListener("click", () =>
+          setModal(document.getElementById("imageModal"), false),
+        );
+      document
+        .getElementById("closeEditModal")
+        .addEventListener("click", () =>
+          setModal(document.getElementById("editModal"), false),
+        );
+      document
+        .getElementById("cancelEditBtn")
+        .addEventListener("click", () =>
+          setModal(document.getElementById("editModal"), false),
+        );
+      document.getElementById("editForm").addEventListener("submit", (event) =>
+        saveEdit(event).catch((error) => {
+          document.getElementById("editError").textContent = error.message;
+        }),
+      );
+      document.getElementById("deleteReportBtn").addEventListener("click", () =>
+        deleteReport().catch((error) => {
+          document.getElementById("editError").textContent = error.message;
+        }),
+      );
+      Promise.all([loadReports(), loadAllLocations()]).catch((error) => {
         summary.innerHTML = "";
         list.innerHTML = `<p class="rounded-xl border border-red-100 bg-red-50 p-4 text-sm text-red-700">${escapeHtml(error.message)}</p>`;
       });

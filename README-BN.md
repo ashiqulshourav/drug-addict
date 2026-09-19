@@ -6,35 +6,32 @@
 
 ```text
 /
-├── index.html
-├── app.js
+├── public/
+│   ├── index.php
+│   ├── reports.php
+│   ├── index.html
+│   ├── reports.html
+│   ├── assets/
+│   ├── api/
+│   └── uploads/
+├── config/
+├── data/
+├── storage/
 ├── database.sql
 ├── .htaccess
-├── api/
-│   ├── _common.php
-│   ├── data.php
-│   ├── locations.php
-│   └── report.php
-├── config/
-│   ├── database.example.php
-│   └── database.php
-└── uploads/
-    └── reports/
+└── tools/
 ```
 
-## InfinityFree setup
+## নিরাপদ production setup
 
 1. Hosting account তৈরি করে একটি MySQL database তৈরি করো।
 2. `database.sql`-এর SQL phpMyAdmin-এ import করো। যদি hosting provider database create করার সময় database name নিজে দেয়, `CREATE DATABASE` এবং `USE madok` অংশ প্রয়োজন হলে বাদ দিয়ে সেই database select করে বাকি SQL চালাও।
-3. `config/database.php`-এ hosting থেকে পাওয়া:
-   - DB_HOST
-   - DB_NAME
-   - DB_USER
-   - DB_PASS
-     বসাও।
-4. সব files `public_html`-এ upload করো।
-5. `uploads/reports` writable আছে কি না দেখো। সাধারণত 755 যথেষ্ট; provider প্রয়োজন হলে 775 ব্যবহার করো।
-6. Browser-এ site খুলে একটি test report submit করো।
+3. সবচেয়ে নিরাপদভাবে domain-এর document root `public/` directory-তে point করো; database/config/data/tools/storage `.htaccess` দিয়ে blocked থাকলেও project root-কে document root না করাই ভালো।
+4. আসল `.env` web root-এর বাইরে রাখো এবং `ENV_FILE` environment variable দিয়ে তার absolute path দাও। `.env.example`-এ শুধু নমুনা values আছে।
+5. `DB_USER`-এর জন্য least-privilege MySQL user ব্যবহার করো; root বা blank password ব্যবহার করো না।
+6. `uploads/reports` writable রাখো, কিন্তু সেখানে PHP execution নিষিদ্ধ থাকবে। `storage/rate-limit` writable এবং public access থেকে blocked থাকতে হবে।
+7. সব production traffic HTTPS-এ চালাও; Cloudflare হলে SSL/TLS `Full (strict)`, Always Use HTTPS এবং WAF/rate limiting চালু করো।
+8. Browser-এ site খুলে একটি test report submit করো।
 
 ## Backend behavior
 
@@ -45,7 +42,9 @@
 - 100m search আগে latitude/longitude bounding box দিয়ে candidate কমায়, পরে exact Haversine distance যাচাই করে।
 - Map data `GET /api/locations.php` থেকে আসে; map bounds দিলে শুধু viewport-এর locations আসে।
 - Statistics এবং police-station table `GET /api/data.php` থেকে আসে।
-- Public abuse guard হিসেবে একই IP fingerprint থেকে এক ঘণ্টায় 20 report limit রাখা হয়েছে।
+- সব API request-এর জন্য file-backed global IP limit এবং write endpoint-এর জন্য আলাদা limit রাখা হয়েছে।
+- Report form-এ honeypot আছে; filled হলে response সফল দেখিয়ে request বাতিল করা হয়।
+- Cross-origin এবং cross-site Fetch Metadata request block করা হয়।
 - Contact information optional; user `yes` বললে তবেই save হয়।
 
 ## Police station coordinates
@@ -56,8 +55,8 @@
 
 ## গুরুত্বপূর্ণ
 
-`config/database.php` public repository-তে commit করবে না। এটি hosting credentials রাখে।
+`config/database.php`, `.env`, database dump, `storage/`, `data/`, `tools/` public repository বা public document root-এ রাখবে না। বর্তমান `.htaccess` এগুলো block করে, তবে আলাদা `public/` document root আরও নিরাপদ।
 
 ## Quick test
 
-`/api/health.php` খুললে `database: connected` দেখালে PHP → MySQL connection ঠিক আছে।
+Production-এ health endpoint public রাখা হয়নি; প্রয়োজনে hosting-এর local/admin-only check দিয়ে PHP → MySQL connection যাচাই করো।

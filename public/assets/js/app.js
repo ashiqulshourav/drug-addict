@@ -17,6 +17,58 @@ const LOCATION_API = "api/locations.php";
 const STATISTICS_API = "api/statistics.php";
 const REPORT_API = "api/report.php";
 const REPORTS_API = "api/reports.php";
+const SECURITY_API = "api/security.php";
+
+let csrfToken = "";
+let turnstileToken = "";
+let turnstileWidgetId = null;
+
+function resetTurnstile() {
+    turnstileToken = "";
+    if (turnstileWidgetId !== null && window.turnstile) {
+        window.turnstile.reset(turnstileWidgetId);
+    }
+}
+
+async function initSecurity() {
+    const response = await fetch(SECURITY_API, {
+        headers: { Accept: "application/json" },
+        cache: "no-store"
+    });
+    const security = await response.json();
+    if (!response.ok || !security.ok || !security.csrf_token) {
+        throw new Error("Security initialization failed");
+    }
+
+    csrfToken = security.csrf_token;
+    const csrfInput = document.getElementById("csrfToken");
+    if (csrfInput) csrfInput.value = csrfToken;
+
+    if (!security.turnstile?.enabled || !security.turnstile.site_key) return;
+
+    const widget = document.getElementById("turnstileWidget");
+    if (!widget) return;
+    widget.classList.remove("hidden");
+
+    await new Promise((resolve, reject) => {
+        if (window.turnstile) return resolve();
+        const script = document.createElement("script");
+        script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+        script.async = true;
+        script.defer = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Turnstile failed to load"));
+        document.head.appendChild(script);
+    });
+
+    turnstileWidgetId = window.turnstile.render(widget, {
+        sitekey: security.turnstile.site_key,
+        action: "report",
+        callback: (token) => { turnstileToken = token; },
+        "expired-callback": () => { turnstileToken = ""; },
+        "error-callback": () => { turnstileToken = ""; }
+    });
+}
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
@@ -1165,6 +1217,15 @@ function renderLocationHighlights(result, resetVisible = false) {
    MAIN MAP CURRENT LOCATION
    ========================================================= */
 
+function restoreLocateButton() {
+    ["mapLocateBtn", "locateMeBtn"].forEach((id) => {
+        const button = document.getElementById(id);
+        if (button) {
+            button.disabled = false;
+        }
+    });
+}
+
 function locateUser(targetId = "map") {
 
     if (
@@ -1213,6 +1274,7 @@ function locateUser(targetId = "map") {
                     "সঠিক coordinates পাওয়া যায়নি।"
                 );
 
+                restoreLocateButton();
                 return;
             }            
 
@@ -1337,7 +1399,7 @@ function locateUser(targetId = "map") {
                 "আপনার অবস্থান Hero Map-এ দেখানো হয়েছে।"
             );
 
-            button.disabled = false;
+            restoreLocateButton();
         },
 
 
@@ -1349,33 +1411,24 @@ function locateUser(targetId = "map") {
             );
 
 
-            restoreLocateButton(targetId);
+            restoreLocateButton();
 
 
             let message =
                 "আপনার বর্তমান লোকেশন পাওয়া যায়নি।";
 
 
-            if (
-                error.code ===
-                error.PERMISSION_DENIED
-            ) {
+            if (error.code === 1) {
 
                 message =
                     "Browser location permission দিন।";
 
-            } else if (
-                error.code ===
-                error.POSITION_UNAVAILABLE
-            ) {
+            } else if (error.code === 2) {
 
                 message =
                     "বর্তমান অবস্থান পাওয়া যাচ্ছে না।";
 
-            } else if (
-                error.code ===
-                error.TIMEOUT
-            ) {
+            } else if (error.code === 3) {
 
                 message =
                     "লোকেশন পেতে সময় শেষ হয়েছে।";
@@ -1477,10 +1530,13 @@ function getCurrentLocationForReport() {
             restoreReportLocationButton();
 
 
-            showToast(
-                "লোকেশন পাওয়া যায়নি",
-                "Browser location permission দিন অথবা ম্যাপ থেকে লোকেশন নির্বাচন করুন।"
-            );
+            const message = error.code === 1
+                ? "Browser location permission দিন।"
+                : error.code === 3
+                    ? "লোকেশন পেতে সময় শেষ হয়েছে।"
+                    : "বর্তমান অবস্থান পাওয়া যাচ্ছে না। ম্যাপ থেকে লোকেশন নির্বাচন করুন।";
+
+            showToast("লোকেশন পাওয়া যায়নি", message);
         },
 
 
@@ -3184,6 +3240,9 @@ async function handleReportSubmit(
             reportForm
         );
 
+    if (csrfToken) formData.set("csrf_token", csrfToken);
+    if (turnstileToken) formData.set("cf-turnstile-response", turnstileToken);
+
 
     /*
      * Ensure backend field names exist.
@@ -3388,6 +3447,8 @@ async function handleReportSubmit(
 
 
     } finally {
+
+        resetTurnstile();
 
         enableSubmitButton();
     }
@@ -3703,6 +3764,13 @@ async function initMadok() {
      */
 
     cacheDom();
+
+    try {
+        await initSecurity();
+    } catch (error) {
+        console.error("[Madok] Security initialization failed:", error);
+        showToast("নিরাপত্তা যাচাই প্রস্তুত হয়নি", "পেজটি reload করে আবার চেষ্টা করুন।");
+    }
 
 
     /*

@@ -7,7 +7,6 @@
 config/database.php
 config/database.local.php
 config/*local*.php
-*.htaccess
 
 # ================================
 # Database dumps / local data
@@ -25,13 +24,14 @@ config/*local*.php
 uploads/*
 !uploads/.gitkeep
 !uploads/.htaccess
+!uploads/reports/
+!uploads/reports/.htaccess
 storage/
 !storage/
 storage/*
 !storage/.htaccess
 logs/
 *.log
-*.htaccess
 
 # ================================
 # Dependencies / build output

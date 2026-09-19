@@ -4,6 +4,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/_common.php';
 request_method('POST');
 
+if (!verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+    json_response(['ok' => false, 'message' => 'Security token invalid or expired. Please reload the page.'], 403);
+}
+
 if (!rate_limit('report-edit:' . client_ip(), 30, 3600, true)) {
     json_response(['ok' => false, 'message' => 'অনেকগুলো পরিবর্তনের অনুরোধ হয়েছে। পরে আবার চেষ্টা করুন।'], 429);
 }

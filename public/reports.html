@@ -237,6 +237,16 @@
       const appBase = location.pathname.includes("/reports/")
         ? location.pathname.split("/reports/")[0]
         : location.pathname.replace(/\/[^/]*$/, "");
+      let csrfToken = "";
+      const securityReady = fetch(`${appBase}/api/security.php`, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      }).then(async (response) => {
+        const result = await response.json();
+        if (!response.ok || !result.ok)
+          throw new Error("Security initialization failed");
+        csrfToken = result.csrf_token;
+      });
       const imageUrl = (imagePath) => {
         if (!imagePath) return "";
         if (/^(?:https?:)?\/\//i.test(imagePath) || imagePath.startsWith("/")) {
@@ -333,9 +343,11 @@
       }
       async function saveEdit(event) {
         event.preventDefault();
+        await securityReady;
         const form = event.currentTarget;
         const data = new FormData(form);
         data.append("action", "update");
+        data.append("csrf_token", csrfToken);
         const response = await fetch(`${appBase}/api/report-edit.php`, {
           method: "POST",
           body: data,
@@ -349,9 +361,11 @@
       }
       async function deleteReport() {
         if (!editingReport || !confirm("এই রিপোর্টটি ডিলিট করবেন?")) return;
+        await securityReady;
         const data = new FormData();
         data.append("reportId", editingReport.id);
         data.append("action", "delete");
+        data.append("csrf_token", csrfToken);
         const response = await fetch(`${appBase}/api/report-edit.php`, {
           method: "POST",
           body: data,

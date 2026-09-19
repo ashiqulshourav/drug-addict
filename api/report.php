@@ -4,8 +4,21 @@ declare(strict_types=1);
 require_once __DIR__ . '/_common.php';
 request_method('POST');
 
-if (!rate_limit('report:' . client_ip(), 20, 3600, true)) {
+if (!verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
+    json_response(['ok' => false, 'message' => 'Security token invalid or expired. Please reload the page.'], 403);
+}
+
+$reportWindow = max(60, (int) env_value('REPORT_RATE_LIMIT_WINDOW', '3600'));
+$reportMax = max(1, (int) env_value('REPORT_RATE_LIMIT_MAX_REQUESTS', '20'));
+if (!rate_limit('report:' . client_ip(), $reportMax, $reportWindow, true)) {
     json_response(['ok' => false, 'message' => 'অল্প সময়ের মধ্যে অনেকগুলো রিপোর্ট হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।'], 429);
+}
+if (!rate_limit('report:global', max(1, (int) env_value('GLOBAL_REPORT_RATE_LIMIT_MAX_REQUESTS', '200')), max(60, (int) env_value('GLOBAL_REPORT_RATE_LIMIT_WINDOW', '3600')), true)) {
+    json_response(['ok' => false, 'message' => 'এই মুহূর্তে অনেকগুলো রিপোর্ট জমা পড়েছে। পরে আবার চেষ্টা করুন।'], 429);
+}
+
+if (!verify_turnstile((string) ($_POST['cf-turnstile-response'] ?? ''), 'report')) {
+    json_response(['ok' => false, 'message' => 'Security verification failed. Please try again.'], 403);
 }
 
 if (!isset($_POST['reportType'], $_POST['title'], $_POST['latitude'], $_POST['longitude'])) {
@@ -586,8 +599,8 @@ try {
 }
 
 
-$stationStmt = $pdo->prepare("
-    SELECT
+$stationStmt = $pdo->prepare(
+    "SELECT
         id,
         name,
         latitude,
@@ -660,8 +673,7 @@ $policeStationId = $station ? (int) $station['id'] : null;
 
 
 $insert = $pdo->prepare(
-    "
-    INSERT INTO locations
+    "INSERT INTO locations
     (
         latitude,
         longitude,

@@ -7,6 +7,114 @@ header('Cache-Control: no-store, max-age=0');
 
 require_once dirname(__DIR__) . '/config/database.php';
 
+function env_value(string $key, ?string $default = null): ?string
+{
+    static $values = null;
+    if ($values === null) {
+        $values = database_env();
+    }
+
+    $environmentValue = getenv($key);
+    return $environmentValue === false ? ($values[$key] ?? $default) : $environmentValue;
+}
+
+function start_secure_session(): void
+{
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        return;
+    }
+
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_start();
+}
+
+function csrf_token(): string
+{
+    start_secure_session();
+    if (empty($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return (string) $_SESSION['csrf_token'];
+}
+
+function verify_csrf(string $token): bool
+{
+    start_secure_session();
+    return $token !== '' && isset($_SESSION['csrf_token']) && hash_equals((string) $_SESSION['csrf_token'], $token);
+}
+
+function verify_turnstile(string $token, string $expectedAction): bool
+{
+    $config = turnstile_config();
+    if (!$config['enabled']) {
+        return true;
+    }
+
+    $secret = $config['secret'];
+    $hostnames = $config['hostnames'];
+    if ($secret === '' || $token === '' || strlen($token) > 2048 || $hostnames === []) {
+        return false;
+    }
+
+    $payload = http_build_query([
+        'secret' => $secret,
+        'response' => $token,
+        'remoteip' => client_ip(),
+    ]);
+    $context = stream_context_create([
+        'http' => [
+            'method' => 'POST',
+            'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+            'content' => $payload,
+            'timeout' => 5,
+        ],
+    ]);
+    $response = @file_get_contents('https://challenges.cloudflare.com/turnstile/v0/siteverify', false, $context);
+    $result = json_decode($response ?: '', true);
+
+    if (!is_array($result) || empty($result['success'])) {
+        return false;
+    }
+
+    if (!empty($config['local_test'])) {
+        return true;
+    }
+
+    return ($result['action'] ?? '') === $expectedAction
+        && in_array((string) ($result['hostname'] ?? ''), $hostnames, true);
+}
+
+function turnstile_config(): array
+{
+    $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    $host = preg_replace('/:\d+$/', '', $host) ?: $host;
+    $isLocal = in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
+
+    if ($isLocal && filter_var(env_value('TURNSTILE_LOCAL_ENABLED', 'false'), FILTER_VALIDATE_BOOL)) {
+        return [
+            'enabled' => true,
+            'local_test' => true,
+            'site_key' => (string) env_value('TURNSTILE_LOCAL_SITE_KEY', ''),
+            'secret' => trim((string) env_value('TURNSTILE_LOCAL_SECRET_KEY', '')),
+            'hostnames' => [$host],
+        ];
+    }
+
+    return [
+        'enabled' => filter_var(env_value('TURNSTILE_ENABLED', 'false'), FILTER_VALIDATE_BOOL),
+        'local_test' => false,
+        'site_key' => (string) env_value('TURNSTILE_SITE_KEY', ''),
+        'secret' => trim((string) env_value('TURNSTILE_SECRET_KEY', '')),
+        'hostnames' => array_values(array_filter(array_map('trim', explode(',', (string) env_value('TURNSTILE_HOSTNAMES', ''))))),
+    ];
+}
+
 function enforce_request_security(): void
 {
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';

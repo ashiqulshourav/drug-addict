@@ -4,6 +4,10 @@ declare(strict_types=1);
 require_once __DIR__ . '/_common.php';
 request_method('POST');
 
+if (!rate_limit('report:' . client_ip(), 20, 3600, true)) {
+    json_response(['ok' => false, 'message' => 'অল্প সময়ের মধ্যে অনেকগুলো রিপোর্ট হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।'], 429);
+}
+
 if (!isset($_POST['reportType'], $_POST['title'], $_POST['latitude'], $_POST['longitude'])) {
     json_response(['ok' => false, 'message' => 'Required fields are missing.'], 422);
 }
@@ -28,7 +32,7 @@ if ($willing && $contact === '') {
     json_response(['ok' => false, 'message' => 'Contact information is required.'], 422);
 }
 
-/* Small abuse guard: 20 reports per IP fingerprint in 1 hour. */
+/* Keep the database check as a second layer for older or shared deployments. */
 $pdo = db();
 /*
 |--------------------------------------------------------------------------

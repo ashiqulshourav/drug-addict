@@ -1165,6 +1165,15 @@ function renderLocationHighlights(result, resetVisible = false) {
    MAIN MAP CURRENT LOCATION
    ========================================================= */
 
+function restoreLocateButton() {
+    ["mapLocateBtn", "locateMeBtn"].forEach((id) => {
+        const button = document.getElementById(id);
+        if (button) {
+            button.disabled = false;
+        }
+    });
+}
+
 function locateUser(targetId = "map") {
 
     if (
@@ -1213,6 +1222,7 @@ function locateUser(targetId = "map") {
                     "সঠিক coordinates পাওয়া যায়নি।"
                 );
 
+                restoreLocateButton();
                 return;
             }            
 
@@ -1337,7 +1347,7 @@ function locateUser(targetId = "map") {
                 "আপনার অবস্থান Hero Map-এ দেখানো হয়েছে।"
             );
 
-            button.disabled = false;
+            restoreLocateButton();
         },
 
 
@@ -1349,33 +1359,24 @@ function locateUser(targetId = "map") {
             );
 
 
-            restoreLocateButton(targetId);
+            restoreLocateButton();
 
 
             let message =
                 "আপনার বর্তমান লোকেশন পাওয়া যায়নি।";
 
 
-            if (
-                error.code ===
-                error.PERMISSION_DENIED
-            ) {
+            if (error.code === 1) {
 
                 message =
                     "Browser location permission দিন।";
 
-            } else if (
-                error.code ===
-                error.POSITION_UNAVAILABLE
-            ) {
+            } else if (error.code === 2) {
 
                 message =
                     "বর্তমান অবস্থান পাওয়া যাচ্ছে না।";
 
-            } else if (
-                error.code ===
-                error.TIMEOUT
-            ) {
+            } else if (error.code === 3) {
 
                 message =
                     "লোকেশন পেতে সময় শেষ হয়েছে।";
@@ -1477,10 +1478,13 @@ function getCurrentLocationForReport() {
             restoreReportLocationButton();
 
 
-            showToast(
-                "লোকেশন পাওয়া যায়নি",
-                "Browser location permission দিন অথবা ম্যাপ থেকে লোকেশন নির্বাচন করুন।"
-            );
+            const message = error.code === 1
+                ? "Browser location permission দিন।"
+                : error.code === 3
+                    ? "লোকেশন পেতে সময় শেষ হয়েছে।"
+                    : "বর্তমান অবস্থান পাওয়া যাচ্ছে না। ম্যাপ থেকে লোকেশন নির্বাচন করুন।";
+
+            showToast("লোকেশন পাওয়া যায়নি", message);
         },
 
 

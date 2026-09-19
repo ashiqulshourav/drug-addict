@@ -23,9 +23,14 @@ config/*local*.php
 # ================================
 uploads/*
 !uploads/.gitkeep
+!uploads/.htaccess
 storage/
+!storage/
+storage/*
+!storage/.htaccess
 logs/
 *.log
+*.htaccess
 
 # ================================
 # Dependencies / build output

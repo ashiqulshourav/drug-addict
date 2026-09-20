@@ -7,8 +7,8 @@ RewriteEngine On
 	Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-<FilesMatch "^(\.env|\.gitignore|.*\.(?:bak|config|ini|log|sql|sql~|swp))$">
-	Require all denied
+<FilesMatch "^(\.env|\.gitignore|.\*\.(?:bak|config|ini|log|sql|sql~|swp))$">
+Require all denied
 </FilesMatch>
 
 <IfModule mod_rewrite.c>
@@ -22,4 +22,4 @@ RewriteRule ^$ public/index.html [L]
 RewriteRule ^reports/(?:location=)?[0-9]+/?$ public/reports.html [L,QSA,NC]
 RewriteRule ^reports/?$ public/reports.html [L]
 RewriteRule ^(?:index\.html)?$ public/index.html [L]
-RewriteRule ^assets/(.*)$ public/assets/$1 [L]
+RewriteRule ^assets/(.\*)$ public/assets/$1 [L]

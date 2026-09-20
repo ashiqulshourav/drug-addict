@@ -10,7 +10,6 @@ try {
     json_response([
         'ok' => true,
         'database' => 'connected',
-        'php' => PHP_VERSION,
     ]);
 } catch (Throwable $e) {
     error_log('Madok health error: ' . $e->getMessage());

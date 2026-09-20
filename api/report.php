@@ -10,6 +10,9 @@ if (!verify_csrf((string) ($_POST['csrf_token'] ?? ''))) {
 
 $reportWindow = max(60, (int) env_value('REPORT_RATE_LIMIT_WINDOW', '3600'));
 $reportMax = max(1, (int) env_value('REPORT_RATE_LIMIT_MAX_REQUESTS', '20'));
+if (!rate_limit('report-burst:' . client_ip(), max(1, (int) env_value('REPORT_BURST_MAX_REQUESTS', '3')), max(10, (int) env_value('REPORT_BURST_WINDOW', '60')), true)) {
+    json_response(['ok' => false, 'message' => 'অল্প সময়ে অনেকগুলো অনুরোধ হয়েছে। পরে আবার চেষ্টা করুন।'], 429);
+}
 if (!rate_limit('report:' . client_ip(), $reportMax, $reportWindow, true)) {
     json_response(['ok' => false, 'message' => 'অল্প সময়ের মধ্যে অনেকগুলো রিপোর্ট হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।'], 429);
 }
@@ -242,6 +245,9 @@ if (isset($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE)
     if ($info === false) {
         json_response(['ok' => false, 'message' => 'শুধু valid image upload করুন।'], 422);
     }
+    if (($info[0] ?? 0) < 1 || ($info[1] ?? 0) < 1 || ($info[0] ?? 0) > 8000 || ($info[1] ?? 0) > 8000) {
+        json_response(['ok' => false, 'message' => 'ছবির dimension সর্বোচ্চ 8000x8000 হতে পারে।'], 422);
+    }
 
     $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
     $allowed = ['image/jpeg', 'image/png', 'image/webp'];
@@ -462,6 +468,14 @@ try {
     $location = $stmt->fetch();
 
     if ($location) {
+        $sameLocation = $pdo->prepare(
+            'SELECT COUNT(*) FROM reports WHERE ip_hash = ? AND location_id = ? AND created_at >= (NOW() - INTERVAL 1 HOUR)'
+        );
+        $sameLocation->execute([$hash, (int) $location['id']]);
+        if ((int) $sameLocation->fetchColumn() >= max(1, (int) env_value('REPORT_SAME_LOCATION_MAX_REQUESTS', '3'))) {
+            $pdo->rollBack();
+            json_response(['ok' => false, 'message' => 'এই লোকেশনে অল্প সময়ে অনেকগুলো রিপোর্ট হয়েছে।'], 429);
+        }
         $newType = $location['type'] === $type
             ? $type
             : 'both';
@@ -580,6 +594,8 @@ try {
 
     $reportId = (int)$pdo->lastInsertId();
     $pdo->commit();
+    start_secure_session();
+    $_SESSION['owned_reports'][(string) $reportId] = true;
 
     json_response([
         'ok' => true,

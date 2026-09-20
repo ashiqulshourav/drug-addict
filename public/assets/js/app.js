@@ -2672,7 +2672,7 @@ async function loadStatisticsByDivision(
       window.madokStatistics
     );
 
-    renderLocationHighlights(result, true);
+    // renderLocationHighlights(result, true);
 
 
     console.log(

@@ -31,7 +31,7 @@ try {
     $stmt->execute([$reportId]);
     $report = $stmt->fetch();
 
-    if (!$report || !hash_equals((string) ($report['ip_hash'] ?? ''), ip_hash())) {
+    if (!$report || !owns_report($reportId)) {
         $pdo->rollBack();
         json_response(['ok' => false, 'message' => 'এই রিপোর্ট edit করার অনুমতি নেই।'], 403);
     }
@@ -66,6 +66,8 @@ try {
             ]);
         }
         $pdo->commit();
+        start_secure_session();
+        unset($_SESSION['owned_reports'][(string) $reportId]);
         if ($oldImage) {
             @unlink(dirname(__DIR__) . '/' . $oldImage);
         }
@@ -91,7 +93,8 @@ try {
         }
         $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
         $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-        if (!isset($allowed[$mime]) || @getimagesize($file['tmp_name']) === false) {
+        $info = @getimagesize($file['tmp_name']);
+        if (!isset($allowed[$mime]) || $info === false || ($info[0] ?? 0) < 1 || ($info[1] ?? 0) < 1 || ($info[0] ?? 0) > 8000 || ($info[1] ?? 0) > 8000) {
             $pdo->rollBack();
             json_response(['ok' => false, 'message' => 'শুধু valid JPG, PNG অথবা WebP ছবি দিন।'], 422);
         }

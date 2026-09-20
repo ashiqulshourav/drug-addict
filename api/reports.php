@@ -18,7 +18,6 @@ try {
             r.title,
             r.description,
             r.image_path,
-            r.ip_hash,
             r.created_at,
             l.latitude,
             l.longitude,
@@ -61,7 +60,7 @@ try {
             'title' => (string) $row['title'],
             'description' => $row['description'] !== null ? (string) $row['description'] : '',
             'image' => $row['image_path'] !== null ? (string) $row['image_path'] : null,
-            'can_edit' => hash_equals((string) ($row['ip_hash'] ?? ''), ip_hash()),
+            'can_edit' => owns_report((int) $row['id']),
             'created_at' => (string) $row['created_at']
         ];
     }

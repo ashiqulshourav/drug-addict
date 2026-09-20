@@ -4,6 +4,8 @@ declare(strict_types=1);
 header('Content-Type: application/json; charset=utf-8');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: no-store, max-age=0');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 require_once dirname(__DIR__) . '/config/database.php';
 
@@ -24,6 +26,7 @@ function start_secure_session(): void
         return;
     }
 
+    ini_set('session.use_strict_mode', '1');
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',
@@ -32,6 +35,12 @@ function start_secure_session(): void
         'samesite' => 'Lax',
     ]);
     session_start();
+}
+
+function owns_report(int $reportId): bool
+{
+    start_secure_session();
+    return !empty($_SESSION['owned_reports'][(string) $reportId]);
 }
 
 function csrf_token(): string
@@ -80,10 +89,6 @@ function verify_turnstile(string $token, string $expectedAction): bool
 
     if (!is_array($result) || empty($result['success'])) {
         return false;
-    }
-
-    if (!empty($config['local_test'])) {
-        return true;
     }
 
     return ($result['action'] ?? '') === $expectedAction
@@ -206,7 +211,8 @@ function clean_text(mixed $value, int $max): string
 
 function client_ip(): string
 {
-    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
 }
 
 function ip_hash(): string

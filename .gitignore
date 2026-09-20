@@ -24,7 +24,6 @@ config/*local*.php
 uploads/*
 !uploads/.gitkeep
 !uploads/.htaccess
-!uploads/reports/
 !uploads/reports/.htaccess
 storage/
 !storage/

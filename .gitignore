@@ -65,3 +65,8 @@ phpunit.xml.dist.bak
 .well-known/
 */error_log
 error_log
+
+# ================================
+# Prettier issue 
+# ================================
+.prettierignore

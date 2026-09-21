@@ -18,6 +18,8 @@ try {
             r.title,
             r.description,
             r.image_path,
+            r.yes_count,
+            r.no_count,
             r.created_at,
             l.latitude,
             l.longitude,
@@ -40,6 +42,12 @@ try {
     $stmt->execute([$locationId]);
     $reports = [];
     $location = null;
+    start_secure_session();
+    if (empty($_SESSION['voter_id'])) {
+        $_SESSION['voter_id'] = bin2hex(random_bytes(32));
+    }
+    $voterHash = hash('sha256', (string) $_SESSION['voter_id']);
+    $voteStmt = $pdo->prepare('SELECT 1 FROM report_votes WHERE report_id = ? AND voter_hash = ?');
 
     while ($row = $stmt->fetch()) {
         if ($location === null) {
@@ -54,12 +62,16 @@ try {
             ];
         }
 
+        $voteStmt->execute([(int) $row['id'], $voterHash]);
         $reports[] = [
             'id' => (int) $row['id'],
             'type' => (string) $row['report_type'],
             'title' => (string) $row['title'],
             'description' => $row['description'] !== null ? (string) $row['description'] : '',
             'image' => $row['image_path'] !== null ? (string) $row['image_path'] : null,
+            'yes' => (int) $row['yes_count'],
+            'no' => (int) $row['no_count'],
+            'voted' => (bool) $voteStmt->fetchColumn(),
             'can_edit' => owns_report((int) $row['id']),
             'created_at' => (string) $row['created_at']
         ];

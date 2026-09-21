@@ -11,5 +11,7 @@ json_response([
     'turnstile' => [
         'enabled' => turnstile_config()['enabled'],
         'site_key' => turnstile_config()['site_key'],
+        'local_test' => turnstile_config()['local_test'],
     ],
+    'local_turnstile_token' => turnstile_config()['local_test'] ? local_turnstile_token() : null,
 ]);

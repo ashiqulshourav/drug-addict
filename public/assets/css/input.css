@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+body {
+  font-family: "Noto Sans Bengali", Arial, sans-serif;
+}
+.leaflet-container {
+  font-family: "Noto Sans Bengali", Arial, sans-serif;
+}
+.custom-marker {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border: 3px solid white;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
+}
+.custom-marker span {
+  color: white;
+  transform: rotate(45deg);
+  font-weight: 800;
+}
+.modal-open {
+  display: flex !important;
+}
+.marker-blink {
+  animation: markerBlink 1s ease-in-out 4;
+}
+@keyframes markerBlink {
+  0%,
+  100% {
+    opacity: 1;
+    transform: rotate(-45deg) scale(1);
+  }
+  50% {
+    opacity: 0.25;
+    transform: rotate(-45deg) scale(1.35);
+  }
+}
+.toast-show {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: none !important;
+}
+.filter-btn {
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.filter-btn.active {
+  background: #5b46e8 !important;
+  color: #fff !important;
+  box-shadow: 0 2px 7px rgba(91, 70, 232, 0.22);
+}
+.report-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.report-table tr td:first-child {
+  padding-left: 15px;
+}
+.report-table td.see-more-cell {
+  display: table-cell !important;
+  padding-left: 15px !important;
+  text-align: center !important;
+  width: 100% !important;
+}
+.global-search-control {
+  z-index: 1100;
+}
+@media (max-width: 767px) {
+  #globalSearchArea {
+    display: flex;
+    justify-content: flex-end;
+  }
+  #globalSearchArea > #globalSearchToggle {
+    display: inline-flex;
+  }
+  #globalSearchArea > #globalSearch {
+    display: none;
+  }
+  #globalSearchArea.search-open {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 8px;
+    z-index: 1200;
+    display: block;
+  }
+  #globalSearchArea.search-open > #globalSearchToggle {
+    display: none;
+  }
+  #globalSearchArea.search-open > #globalSearch {
+    display: block;
+    width: 100%;
+  }
+  #globalSearchArea.search-open > #globalSearchResults {
+    top: 44px;
+  }
+  header:has(#globalSearchArea.search-open) {
+    z-index: 1300;
+  }
+}
+@media (max-width: 990px) {
+  .report-table {
+    min-width: 0;
+    width: 100%;
+    table-layout: fixed;
+    font-size: 14px;
+  }
+  .report-table th,
+  .report-table td {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    padding: 10px 4px 10px 15px;
+    vertical-align: middle;
+  }
+  .report-table th:nth-child(1),
+  .report-table td:nth-child(1),
+  .report-table th:nth-child(2),
+  .report-table td:nth-child(2) {
+    display: none;
+  }
+  .report-table th:nth-child(3),
+  .report-table td:nth-child(3) {
+    width: 34%;
+  }
+  .report-table th:nth-child(4),
+  .report-table td:nth-child(4),
+  .report-table th:nth-child(5),
+  .report-table td:nth-child(5),
+  .report-table th:nth-child(6),
+  .report-table td:nth-child(6) {
+    width: 22%;
+  }
+}
+.report-table th:nth-child(4),
+.report-table td:nth-child(4),
+.report-table th:nth-child(5),
+.report-table td:nth-child(5),
+.report-table th:nth-child(6),
+.report-table td:nth-child(6) {
+  text-align: center;
+}

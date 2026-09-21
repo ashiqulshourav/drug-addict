@@ -9,28 +9,7 @@
     />
     <title>Madok — Community Location Reports</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              bengali: ['"Noto Sans Bengali"', "Arial", "sans-serif"],
-            },
-            colors: {
-              primary: "#5b46e8",
-              "primary-dark": "#4935cc",
-              sale: "#f97316",
-              use: "#ef4444",
-              both: "#8b5cf6",
-            },
-            boxShadow: {
-              soft: "0 18px 55px rgba(26,34,58,.09)",
-            },
-          },
-        },
-      };
-    </script>
+    <link rel="stylesheet" href="./assets/css/app.css" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -199,12 +178,36 @@
           >
         </nav>
 
-        <button
-          id="openReportBtn"
-          class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[11px] bg-primary px-4 text-sm font-bold text-white shadow-lg shadow-primary/20 transition hover:-translate-y-px hover:bg-primary-dark"
-        >
-          + লোকেশন রিপোর্ট করুন
-        </button>
+        <div class="flex gap-3 md:gap-6">
+          <div id="globalSearchArea" class="relative w-full md:w-64">
+            <button
+              id="globalSearchToggle"
+              type="button"
+              aria-label="সার্চ খুলুন"
+              class="hidden h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg text-slate-600"
+            >
+              ⌕
+            </button>
+            <input
+              id="globalSearch"
+              type="search"
+              autocomplete="off"
+              placeholder="বিভাগ, জেলা বা উপজেলা খুঁজুন"
+              class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none focus:border-primary"
+            />
+            <div
+              id="globalSearchResults"
+              class="absolute left-0 right-0 top-11 z-[1100] hidden max-h-80 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl w-"
+            ></div>
+          </div>
+
+          <button
+            id="openReportBtn"
+            class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[11px] bg-primary px-4 text-sm font-bold text-white shadow-lg shadow-primary/20 transition hover:-translate-y-px hover:bg-primary-dark grow min-w-fit"
+          >
+            + লোকেশন রিপোর্ট করুন
+          </button>
+        </div>
       </div>
     </header>
 
@@ -629,7 +632,7 @@
           <div>
             <span
               class="text-[11px] font-extrabold tracking-[1.5px] text-primary"
-              >NEW REPORT</span
+              >+ NEW REPORT</span
             >
             <h2 class="mt-1 text-2xl font-extrabold">
               মাদকের লোকেশন রিপোর্ট করুন
@@ -816,20 +819,6 @@
               আপনি কি তাদের ধরিয়ে দিতে ইচ্ছুক?
             </label>
 
-            <!-- Privacy Info -->
-            <div
-              class="mb-3 flex gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3"
-            >
-              <div class="mt-0.5 text-blue-600">ⓘ</div>
-
-              <p class="m-0 text-[12px] leading-5 text-blue-700">
-                আপনি চাইলে আমাদের সাথে আপনার যোগাযোগের তথ্য শেয়ার করতে পারেন।
-                আপনার দেওয়া তথ্য অন্য কোনো ব্যবহারকারীর কাছে প্রকাশ করা হবে না।
-                শুধুমাত্র প্রয়োজন হলে সংশ্লিষ্ট কর্তৃপক্ষের সাথে যোগাযোগের জন্য
-                ব্যবহার করা হবে।
-              </p>
-            </div>
-
             <!-- Yes / No -->
             <div class="grid grid-cols-2 gap-2">
               <label class="relative">
@@ -874,6 +863,20 @@
               class="mt-1.5 hidden text-[11px] text-red-500"
             ></p>
 
+            <!-- Privacy Info -->
+            <div
+              class="mt-3 flex gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3"
+            >
+              <div class="mt-0.5 text-blue-600">ⓘ</div>
+
+              <p class="m-0 text-[12px] leading-5 text-blue-700">
+                আপনি চাইলে আমাদের সাথে আপনার যোগাযোগের তথ্য শেয়ার করতে পারেন।
+                আপনার দেওয়া তথ্য অন্য কোনো ব্যবহারকারীর কাছে প্রকাশ করা হবে না।
+                শুধুমাত্র প্রয়োজন হলে সংশ্লিষ্ট কর্তৃপক্ষের সাথে যোগাযোগের জন্য
+                ব্যবহার করা হবে।
+              </p>
+            </div>
+
             <!-- Contact Input -->
             <div id="contactInputWrapper" class="mt-3 hidden">
               <label
@@ -898,7 +901,7 @@
             </div>
           </div>
 
-          <div class="mb-5">
+          <div class="mb-3">
             <label
               class="mb-2 block text-xs md:text-sm font-bold text-slate-600"
               >ছবি
@@ -914,7 +917,7 @@
                 id="reportImage"
                 name="image"
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 class="hidden"
               />
               <span
@@ -925,7 +928,7 @@
                 >ছবি নির্বাচন করুন</strong
               >
               <small class="text-[11px] text-slate-400"
-                >JPG, PNG বা WebP · সর্বোচ্চ 5MB</small
+                >JPG, PNG বা WebP · সর্বোচ্চ 5MB · স্বয়ংক্রিয় compress</small
               >
             </label>
 
@@ -964,7 +967,7 @@
           </div>
 
           <input type="hidden" name="csrf_token" id="csrfToken" />
-          <div id="turnstileWidget" class="cf-turnstile mb-4 hidden"></div>
+          <div id="turnstileWidget" class="cf-turnstile mb-4 mt-4 hidden"></div>
 
           <div class="mt-5 flex justify-end gap-2">
             <button
@@ -1023,12 +1026,41 @@
           </button>
         </div>
 
+        <!-- Search + Map -->
+        <div class="border-b border-slate-200 px-4 py-3">
+          <div class="relative">
+            <input
+              id="locationPickerSearch"
+              type="search"
+              autocomplete="off"
+              placeholder="বিভাগ, জেলা, উপজেলা বা থানা খুঁজুন"
+              class="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+            />
+            <div
+              id="locationPickerSearchResults"
+              class="absolute left-0 right-0 top-11 z-[2500] hidden max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+            ></div>
+          </div>
+        </div>
+
         <!-- Map -->
         <div class="relative">
           <div
             id="locationPickerMap"
             class="h-[400px] w-full md:h-[500px]"
           ></div>
+
+          <button
+            id="locationPickerLocateBtn"
+            type="button"
+            title="আমার বর্তমান অবস্থান"
+            aria-label="আমার বর্তমান অবস্থান"
+            class="absolute bottom-4 right-3 z-[500] grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-black/95 text-white shadow-xl disabled:cursor-wait"
+          >
+            <span
+              class="rounded-full border-[3px] border-white bg-primary p-1"
+            ></span>
+          </button>
 
           <!-- Map instruction -->
           <div
@@ -1105,6 +1137,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin=""
     ></script>
-    <script src="./assets/js/app.js?v=2.0.8"></script>
+    <script src="./assets/js/search.js?v=1.0.1"></script>
+    <script src="./assets/js/app.js?v=2.1.0"></script>
   </body>
 </html>

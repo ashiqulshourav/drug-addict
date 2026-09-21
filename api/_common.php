@@ -65,6 +65,13 @@ function verify_turnstile(string $token, string $expectedAction): bool
         return true;
     }
 
+    if ($config['local_test']) {
+        start_secure_session();
+        return $token !== ''
+            && isset($_SESSION['local_turnstile_token'])
+            && hash_equals((string) $_SESSION['local_turnstile_token'], $token);
+    }
+
     $secret = $config['secret'];
     $hostnames = $config['hostnames'];
     if ($secret === '' || $token === '' || strlen($token) > 2048 || $hostnames === []) {
@@ -95,6 +102,15 @@ function verify_turnstile(string $token, string $expectedAction): bool
         && in_array((string) ($result['hostname'] ?? ''), $hostnames, true);
 }
 
+function local_turnstile_token(): string
+{
+    start_secure_session();
+    if (empty($_SESSION['local_turnstile_token'])) {
+        $_SESSION['local_turnstile_token'] = bin2hex(random_bytes(32));
+    }
+    return (string) $_SESSION['local_turnstile_token'];
+}
+
 function turnstile_config(): array
 {
     $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
@@ -107,7 +123,7 @@ function turnstile_config(): array
             'local_test' => true,
             'site_key' => (string) env_value('TURNSTILE_LOCAL_SITE_KEY', ''),
             'secret' => trim((string) env_value('TURNSTILE_LOCAL_SECRET_KEY', '')),
-            'hostnames' => [$host],
+            'hostnames' => ['example.com'],
         ];
     }
 

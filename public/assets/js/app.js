@@ -44,6 +44,12 @@ async function initSecurity() {
     const csrfInput = document.getElementById("csrfToken");
     if (csrfInput) csrfInput.value = csrfToken;
 
+    /* Localhost test mode: use session token; do not render Cloudflare widget. */
+    if (security.turnstile?.local_test && security.local_turnstile_token) {
+        turnstileToken = security.local_turnstile_token;
+        return;
+    }
+
     if (!security.turnstile?.enabled || !security.turnstile.site_key) return;
 
     const widget = document.getElementById("turnstileWidget");
@@ -114,6 +120,9 @@ let openMapSelectBtn = null;
 let closeMapSelectBtn = null;
 let confirmMapLocationBtn = null;
 let pickerCoordinates = null;
+let locationPickerSearchInput = null;
+let locationPickerSearchResults = null;
+let locationPickerSearchTimer = null;
 
 let contactYes = null;
 let contactNo = null;
@@ -202,6 +211,16 @@ function cacheDom() {
     pickerCoordinates =
         document.getElementById(
             "pickerCoordinates"
+        );
+
+    locationPickerSearchInput =
+        document.getElementById(
+            "locationPickerSearch"
+        );
+
+    locationPickerSearchResults =
+        document.getElementById(
+            "locationPickerSearchResults"
         );
 
 
@@ -1043,14 +1062,14 @@ async function loadBackendData() {
 
 
     updateStatisticsUI(
-        window.madokStatistics
+        window.madokStatistics,
+        true
     );
 
     renderLocationHighlights(result, true);
 
     populateReportDistricts();
     renderFilteredStations();
-
 
     return result;
 }
@@ -1060,7 +1079,7 @@ async function loadBackendData() {
    UPDATE STATISTICS UI
    ========================================================= */
 
-function updateStatisticsUI(stats) {
+function updateStatisticsUI(stats, updateHero = true) {
 
     const totalLocations =
         document.getElementById(
@@ -1134,7 +1153,7 @@ function updateStatisticsUI(stats) {
     }
 
 
-    if (heroReportedLocations) {
+    if (updateHero && heroReportedLocations) {
 
         heroReportedLocations.textContent =
             formatNumber(
@@ -1143,7 +1162,7 @@ function updateStatisticsUI(stats) {
     }
 
 
-    if (heroPoliceStations) {
+    if (updateHero && heroPoliceStations) {
 
         heroPoliceStations.textContent =
             formatNumber(
@@ -1151,7 +1170,7 @@ function updateStatisticsUI(stats) {
             );
     }
 
-    if (heroTotalReports) {
+    if (updateHero && heroTotalReports) {
         heroTotalReports.textContent =
             formatNumber(stats.total_reports);
     }
@@ -1217,13 +1236,11 @@ function renderLocationHighlights(result, resetVisible = false) {
    MAIN MAP CURRENT LOCATION
    ========================================================= */
 
-function restoreLocateButton() {
-    ["mapLocateBtn", "locateMeBtn"].forEach((id) => {
-        const button = document.getElementById(id);
-        if (button) {
-            button.disabled = false;
-        }
-    });
+function restoreLocateButton(button, originalHtml = null) {
+    if (!button) return;
+    button.disabled = false;
+    button.classList.remove("cursor-wait", "opacity-70");
+    if (originalHtml !== null) button.innerHTML = originalHtml;
 }
 
 function locateUser(targetId = "map") {
@@ -1241,11 +1258,18 @@ function locateUser(targetId = "map") {
     }
 
 
-    const button = document.getElementById("mapLocateBtn");
+    const button = document.getElementById(targetId === "hero" ? "locateMeBtn" : "mapLocateBtn");
+    const originalHtml = button?.innerHTML || null;
 
 
     if (button) {
         button.disabled = true;
+        button.classList.add("cursor-wait", "opacity-70");
+        if (targetId === "hero") {
+            button.textContent = "আপনার লোকেশন লোড হচ্ছে";
+        } else {
+            button.innerHTML = '<span class="animate-spin rounded-full border-[3px] border-white/40 border-t-white p-1" aria-label="লোড হচ্ছে"></span>';
+        }
     }
 
 
@@ -1274,7 +1298,7 @@ function locateUser(targetId = "map") {
                     "সঠিক coordinates পাওয়া যায়নি।"
                 );
 
-                restoreLocateButton();
+                restoreLocateButton(button, originalHtml);
                 return;
             }            
 
@@ -1399,7 +1423,7 @@ function locateUser(targetId = "map") {
                 "আপনার অবস্থান Hero Map-এ দেখানো হয়েছে।"
             );
 
-            restoreLocateButton();
+            restoreLocateButton(button, originalHtml);
         },
 
 
@@ -1411,7 +1435,7 @@ function locateUser(targetId = "map") {
             );
 
 
-            restoreLocateButton();
+            restoreLocateButton(button, originalHtml);
 
 
             let message =
@@ -1452,8 +1476,8 @@ function locateUser(targetId = "map") {
     );
 }
 
-function locateUserOnMainMap() {
-    locateUser("map");
+function locateUserOnMainMap(event) {
+    locateUser(event?.currentTarget?.id === "locateMeBtn" ? "hero" : "map");
 }
 
 
@@ -2132,6 +2156,214 @@ function updateContactVisibility() {
 
 
 /* =========================================================
+   PICKER PLACE SEARCH
+   ========================================================= */
+
+function pickerSearchZoom(type) {
+    if (type === "division") return 8;
+    if (type === "district") return 10;
+    if (type === "upazila") return 12;
+    return 14;
+}
+
+function hidePickerSearchResults() {
+    if (locationPickerSearchResults) {
+        locationPickerSearchResults.classList.add("hidden");
+        locationPickerSearchResults.innerHTML = "";
+    }
+}
+
+function renderPickerSearchResults(results) {
+    if (!locationPickerSearchResults) return;
+
+    const labels = {
+        division: "বিভাগ",
+        district: "জেলা",
+        upazila: "উপজেলা",
+        police_station: "থানা"
+    };
+
+    if (!results.length) {
+        locationPickerSearchResults.innerHTML =
+            '<p class="px-3 py-3 text-xs text-slate-500">কোনো ফলাফল পাওয়া যায়নি</p>';
+        locationPickerSearchResults.classList.remove("hidden");
+        return;
+    }
+
+    locationPickerSearchResults.innerHTML = results.map(function(item, index) {
+        const hasCoords =
+            Number.isFinite(Number(item.lat)) &&
+            Number.isFinite(Number(item.lng));
+        return `
+            <button
+                type="button"
+                data-picker-result="${index}"
+                class="block w-full border-b border-slate-100 px-3 py-2 text-left last:border-0 hover:bg-slate-50 ${hasCoords ? "" : "opacity-50"}"
+                ${hasCoords ? "" : "disabled"}
+            >
+                <span class="block text-[10px] font-bold text-[#951d1f]">${labels[item.type] || item.type}</span>
+                <span class="text-sm font-semibold text-slate-700">${escapeHtml(item.label)}</span>
+                ${item.secondary && item.secondary !== item.label
+                    ? `<span class="ml-2 text-xs text-slate-400">${escapeHtml(item.secondary)}</span>`
+                    : ""}
+            </button>
+        `;
+    }).join("");
+
+    locationPickerSearchResults.classList.remove("hidden");
+
+    locationPickerSearchResults.querySelectorAll("[data-picker-result]").forEach(function(button) {
+        button.addEventListener("click", function() {
+            const item = results[Number(button.dataset.pickerResult)];
+            if (!item) return;
+            const lat = Number(item.lat);
+            const lng = Number(item.lng);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+            if (locationPickerMap) {
+                locationPickerMap.setView([lat, lng], pickerSearchZoom(item.type), { animate: true });
+            }
+            selectMapLocation(lat, lng);
+            if (locationPickerSearchInput) {
+                locationPickerSearchInput.value = item.label;
+            }
+            hidePickerSearchResults();
+        });
+    });
+}
+
+async function searchPickerPlaces(query) {
+    try {
+        const response = await fetch(
+            `api/search.php?q=${encodeURIComponent(query)}`,
+            { headers: { Accept: "application/json" }, cache: "no-store" }
+        );
+        const result = await response.json();
+        renderPickerSearchResults(
+            response.ok && result.ok ? (result.results || []) : []
+        );
+    } catch (error) {
+        renderPickerSearchResults([]);
+    }
+}
+
+function initPickerSearch() {
+    if (!locationPickerSearchInput || !locationPickerSearchResults) {
+        return;
+    }
+
+    locationPickerSearchInput.addEventListener("input", function() {
+        clearTimeout(locationPickerSearchTimer);
+        const query = locationPickerSearchInput.value.trim();
+        if (!query) {
+            hidePickerSearchResults();
+            return;
+        }
+        locationPickerSearchTimer = setTimeout(function() {
+            searchPickerPlaces(query);
+        }, 180);
+    });
+
+    locationPickerSearchInput.addEventListener("keydown", function(event) {
+        if (event.key === "Escape") {
+            hidePickerSearchResults();
+        }
+    });
+
+    document.addEventListener("click", function(event) {
+        if (!event.target.closest("#locationPickerSearch, #locationPickerSearchResults")) {
+            hidePickerSearchResults();
+        }
+    });
+}
+
+function locateUserOnPickerMap() {
+    const button = document.getElementById("locationPickerLocateBtn");
+    if (!navigator.geolocation || !button || button.disabled) {
+        return;
+    }
+
+    const originalHtml = button.innerHTML;
+    button.disabled = true;
+    button.classList.add("cursor-wait", "opacity-70");
+    button.innerHTML =
+        '<span class="animate-spin rounded-full border-[3px] border-white/40 border-t-white p-1" aria-label="লোড হচ্ছে"></span>';
+
+    const restore = function() {
+        button.disabled = false;
+        button.classList.remove("cursor-wait", "opacity-70");
+        button.innerHTML = originalHtml;
+    };
+
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            selectMapLocation(
+                position.coords.latitude,
+                position.coords.longitude
+            );
+            restore();
+        },
+        function() {
+            restore();
+            showToast(
+                "লোকেশন পাওয়া যায়নি",
+                "আপনার বর্তমান লোকেশন পাওয়া যায়নি।"
+            );
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+    );
+}
+
+
+/* =========================================================
+   IMAGE COMPRESSION
+   ========================================================= */
+
+async function compressImageFile(file, maxDimension = 1600, quality = 0.75) {
+    if (!file || !file.type.startsWith("image/")) {
+        return file;
+    }
+    if (file.size <= 350 * 1024) {
+        return file;
+    }
+
+    try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+        const width = Math.max(1, Math.round(bitmap.width * scale));
+        const height = Math.max(1, Math.round(bitmap.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d", { alpha: true });
+        if (!context) {
+            bitmap.close?.();
+            return file;
+        }
+        context.drawImage(bitmap, 0, 0, width, height);
+        bitmap.close?.();
+
+        const blob = await new Promise(function(resolve) {
+            canvas.toBlob(resolve, "image/webp", quality);
+        });
+
+        if (!blob || blob.size <= 0 || blob.size >= file.size) {
+            return file;
+        }
+
+        const baseName = String(file.name || "report-image").replace(/\.[^.]+$/, "");
+        return new File([blob], `${baseName}.webp`, {
+            type: "image/webp",
+            lastModified: Date.now()
+        });
+    } catch (error) {
+        console.warn("[Madok] Image compression skipped:", error);
+        return file;
+    }
+}
+
+
+/* =========================================================
    IMAGE PREVIEW
    ========================================================= */
 
@@ -2157,7 +2389,8 @@ function handleImageChange() {
     if (
         !file.type.startsWith(
             "image/"
-        )
+        ) ||
+        !["image/jpeg", "image/png", "image/webp"].includes(file.type)
     ) {
 
         imageInput.value = "";
@@ -2167,7 +2400,7 @@ function handleImageChange() {
 
         showToast(
             "ভুল ফাইল",
-            "শুধু image file নির্বাচন করুন।"
+            "শুধু JPG, PNG অথবা WebP image নির্বাচন করুন।"
         );
 
         return;
@@ -2375,24 +2608,21 @@ function renderStationTable(
                     <tr>
 
                         <td>
-                            ${escapeHtml(
-                                item.division ||
-                                ""
-                            )}
+                            ${item.division_slug
+                                ? `<a href="location.html?type=division&slug=${encodeURIComponent(item.division_slug)}" class="font-semibold text-primary no-underline hover:underline">${escapeHtml(item.division || "")}</a>`
+                                : escapeHtml(item.division || "")}
                         </td>
 
                         <td>
-                            ${escapeHtml(
-                                item.district ||
-                                ""
-                            )}
+                            ${item.district_slug
+                                ? `<a href="location.html?type=district&slug=${encodeURIComponent(item.district_slug)}" class="font-semibold text-primary no-underline hover:underline">${escapeHtml(item.district || "")}</a>`
+                                : escapeHtml(item.district || "")}
                         </td>
 
                         <td>
-                            ${escapeHtml(
-                                item.station ||
-                                ""
-                            )}
+                            ${item.district_slug && item.upazila_slug
+                                ? `<a href="location.html?type=upazila&slug=${encodeURIComponent(item.district_slug + "/" + item.upazila_slug)}" class="font-semibold text-primary no-underline hover:underline">${escapeHtml(item.station || "")}</a>`
+                                : escapeHtml(item.station || "")}
                         </td>
 
                         <td>
@@ -2669,7 +2899,8 @@ async function loadStatisticsByDivision(
      */
 
     updateStatisticsUI(
-      window.madokStatistics
+        window.madokStatistics,
+        false
     );
 
     // renderLocationHighlights(result, true);
@@ -3196,7 +3427,7 @@ async function handleReportSubmit(
 
 
     /*
-     * Browser-side image validation.
+     * Browser-side image validation + compression.
      */
 
     if (imageInput?.files?.[0]) {
@@ -3241,7 +3472,20 @@ async function handleReportSubmit(
         );
 
     if (csrfToken) formData.set("csrf_token", csrfToken);
-    if (turnstileToken) formData.set("cf-turnstile-response", turnstileToken);
+    if (turnstileToken) {
+        formData.set("cf-turnstile-response", turnstileToken);
+    } else if (document.getElementById("turnstileWidget") && !document.getElementById("turnstileWidget").classList.contains("hidden")) {
+        showToast(
+            "Security verification",
+            "Security verification এখনো সম্পন্ন হয়নি। একটু পরে আবার চেষ্টা করুন।"
+        );
+        return;
+    }
+
+    if (imageInput?.files?.[0]) {
+        const compressed = await compressImageFile(imageInput.files[0]);
+        formData.set("image", compressed, compressed.name);
+    }
 
 
     /*
@@ -3579,6 +3823,13 @@ function initEventListeners() {
             confirmMapLocation
         );
     }
+
+    bindClick(
+        "locationPickerLocateBtn",
+        locateUserOnPickerMap
+    );
+
+    initPickerSearch();
 
 
     /*

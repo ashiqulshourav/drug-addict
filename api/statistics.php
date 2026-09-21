@@ -208,6 +208,8 @@ try {
 
             d.slug AS district_slug,
 
+            u.slug AS upazila_slug,
+
             dv.id AS division_id,
 
             COALESCE(NULLIF(dv.bn_name, ''), dv.name) AS division,
@@ -327,6 +329,9 @@ try {
 
             'district_slug' =>
                 (string) $row['district_slug'],
+
+            'upazila_slug' =>
+                (string) $row['upazila_slug'],
 
             'division_id' =>
                 (int) $row['division_id'],

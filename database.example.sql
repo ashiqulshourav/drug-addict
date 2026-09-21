@@ -11,6 +11,7 @@ SET FOREIGN_KEY_CHECKS = 0;
    DIVISIONS
    ========================================================= */
 
+DROP TABLE IF EXISTS report_votes;
 DROP TABLE IF EXISTS reports;
 DROP TABLE IF EXISTS locations;
 DROP TABLE IF EXISTS police_stations;
@@ -301,6 +302,10 @@ CREATE TABLE reports (
     created_at DATETIME NOT NULL
         DEFAULT CURRENT_TIMESTAMP,
 
+    yes_count INT UNSIGNED NOT NULL DEFAULT 0,
+
+    no_count INT UNSIGNED NOT NULL DEFAULT 0,
+
     INDEX idx_reports_location (
         location_id
     ),
@@ -334,6 +339,16 @@ CREATE TABLE reports (
 ) ENGINE=InnoDB;
 
 
+
+CREATE TABLE report_votes (
+    report_id BIGINT UNSIGNED NOT NULL,
+    voter_hash CHAR(64) NOT NULL,
+    vote ENUM('yes', 'no') NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (report_id, voter_hash),
+    CONSTRAINT fk_report_vote_report FOREIGN KEY (report_id)
+        REFERENCES reports(id) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 /* =========================================================
    DIVISIONS
    ========================================================= */

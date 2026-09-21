@@ -12,6 +12,7 @@ RewriteEngine On
 # Keep clean report URLs working when public/ is the document root.
 RewriteRule ^reports/(?:location=)?[0-9]+/?$ reports.html [L,QSA,NC]
 RewriteRule ^reports/?$ reports.html [L]
+RewriteRule ^location\.html$ location.html [L,QSA,NC]
 
 <FilesMatch "\.(php|phtml|phar|php[0-9]*)$">
   Require all denied

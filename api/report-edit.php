@@ -103,12 +103,35 @@ try {
             $pdo->rollBack();
             json_response(['ok' => false, 'message' => 'Upload directory তৈরি করা যায়নি।'], 500);
         }
-        $filename = bin2hex(random_bytes(16)) . '.' . $allowed[$mime];
-        if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $filename)) {
-            $pdo->rollBack();
-            json_response(['ok' => false, 'message' => 'ছবি সংরক্ষণ করা যায়নি।'], 500);
+        $base = bin2hex(random_bytes(16));
+        $saved = false;
+        if (function_exists('imagecreatefromstring') && function_exists('imagewebp')) {
+            $source = @imagecreatefromstring((string) file_get_contents($file['tmp_name']));
+            if ($source !== false) {
+                $width = imagesx($source);
+                $height = imagesy($source);
+                $scale = min(1, 1600 / max($width, $height));
+                $newWidth = max(1, (int) round($width * $scale));
+                $newHeight = max(1, (int) round($height * $scale));
+                $canvas = imagecreatetruecolor($newWidth, $newHeight);
+                imagealphablending($canvas, false);
+                imagesavealpha($canvas, true);
+                imagecopyresampled($canvas, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+                $filename = $base . '.webp';
+                $saved = @imagewebp($canvas, $dir . '/' . $filename, 75);
+                imagedestroy($canvas);
+                imagedestroy($source);
+                if ($saved) $imagePath = 'uploads/reports/' . $filename;
+            }
         }
-        $imagePath = 'uploads/reports/' . $filename;
+        if (!$saved) {
+            $filename = $base . '.' . $allowed[$mime];
+            if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $filename)) {
+                $pdo->rollBack();
+                json_response(['ok' => false, 'message' => 'ছবি সংরক্ষণ করা যায়নি।'], 500);
+            }
+            $imagePath = 'uploads/reports/' . $filename;
+        }
     }
 
     $update = $pdo->prepare('UPDATE reports SET title = ?, description = ?, image_path = ? WHERE id = ?');

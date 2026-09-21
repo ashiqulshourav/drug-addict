@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Madok - সব রিপোর্ট</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../assets/css/app.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -35,14 +35,45 @@
         transform: rotate(45deg);
         font-weight: 800;
       }
+      .custom-marker.marker-blink {
+        animation: markerBlink 1s ease-in-out infinite;
+      }
+      @keyframes markerBlink {
+        0%,
+        100% {
+          opacity: 1;
+          transform: rotate(-45deg) scale(1);
+        }
+        50% {
+          opacity: 0.4;
+          transform: rotate(-45deg) scale(1.35);
+        }
+      }
+      .filter-btn.active {
+        background: #5b46e8 !important;
+        color: #fff !important;
+      }
+      .filter-btn:not(.active) {
+        background: #f1f5f9 !important;
+        color: #475569 !important;
+      }
+      .map-locate-loading {
+        cursor: wait;
+        opacity: 0.7;
+      }
+      .modal-open {
+        display: flex !important;
+      }
     </style>
   </head>
   <body class="m-0 bg-slate-50 text-slate-800">
-    <header class="border-b border-slate-200 bg-white">
+    <header
+      class="sticky top-0 z-[1001] border-b border-slate-200/80 bg-white/90 backdrop-blur-xl shadow-md"
+    >
       <div
         class="mx-auto flex min-h-[76px] w-[min(900px,calc(100%-32px))] items-center justify-between gap-4"
       >
-        <a href="/" class="flex items-center gap-2.5 no-underline">
+        <a href="../" class="flex items-center gap-2.5 no-underline">
           <span
             class="grid h-10 w-10 place-items-center rounded-xl bg-[#951d1f] text-xl font-extrabold text-white"
             >M</span
@@ -54,11 +85,36 @@
             ></span
           >
         </a>
-        <a
-          href="/"
-          class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600 no-underline hover:bg-slate-50"
-          >হোম পেজ</a
-        >
+        <div class="flex items-center gap-3 md:gap-4">
+          <div id="globalSearchArea" class="relative w-full md:w-64">
+            <button
+              id="globalSearchToggle"
+              type="button"
+              aria-label="সার্চ খুলুন"
+              class="hidden h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg text-slate-600"
+            >
+              ⌕
+            </button>
+            <input
+              id="globalSearch"
+              type="search"
+              autocomplete="off"
+              placeholder="বিভাগ, জেলা বা উপজেলা খুঁজুন"
+              class="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-xs outline-none focus:border-[#5b46e8]"
+            />
+            <div
+              id="globalSearchResults"
+              class="absolute left-0 right-0 top-11 z-[1100] hidden max-h-80 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl"
+            ></div>
+          </div>
+          <button
+            id="openReportBtn"
+            type="button"
+            class="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-[11px] bg-[#5b46e8] px-4 text-sm font-bold text-white shadow-lg shadow-[#5b46e8]/20 transition hover:-translate-y-px grow min-w-fit"
+          >
+            + লোকেশন রিপোর্ট করুন
+          </button>
+        </div>
       </div>
     </header>
 
@@ -79,21 +135,21 @@
             <h2 class="text-base font-extrabold">রিপোর্টের মানচিত্র</h2>
             <p class="text-xs text-slate-500">সব রিপোর্টের লোকেশন দেখুন</p>
           </div>
-          <div class="flex gap-2">
+          <div class="flex items-center gap-2">
             <button
-              class="filter-btn rounded-lg bg-[#5b46e8] px-3 py-2 text-xs font-bold text-white"
+              class="filter-btn active rounded-lg px-3 py-2 text-xs font-bold"
               data-filter="all"
             >
               সব
             </button>
             <button
-              class="filter-btn rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600"
+              class="filter-btn rounded-lg px-3 py-2 text-xs font-bold"
               data-filter="sale"
             >
               বেচাকেনা
             </button>
             <button
-              class="filter-btn rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600"
+              class="filter-btn rounded-lg px-3 py-2 text-xs font-bold"
               data-filter="use"
             >
               সেবন
@@ -107,22 +163,63 @@
             type="button"
             title="আমার বর্তমান অবস্থান"
             aria-label="আমার বর্তমান অবস্থান"
-            class="absolute bottom-4 right-3 z-[500] grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-black/95 text-white shadow-xl"
+            class="absolute bottom-4 right-3 z-[500] grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-black/95 text-white shadow-xl disabled:cursor-wait"
           >
             <span
               class="rounded-full border-[3px] border-white bg-[#5b46e8] p-1"
             ></span>
           </button>
+          <div
+            class="absolute bottom-4 left-3 z-[500] flex flex-wrap gap-3 rounded-lg bg-white/95 px-3 py-2 text-[10px] font-bold shadow-xl md:text-[12px]"
+          >
+            <div>
+              <span
+                class="mr-1 inline-block h-2 w-2 rounded-full bg-red-500"
+              ></span
+              >মাদক বেচাকেনা
+            </div>
+            <div>
+              <span
+                class="mr-1 inline-block h-2 w-2 rounded-full bg-yellow-400"
+              ></span
+              >মাদক সেবন
+            </div>
+            <div>
+              <span
+                class="mr-1 inline-block h-2 w-2 rounded-full bg-green-500"
+              ></span
+              >উভয়
+            </div>
+          </div>
         </div>
       </section>
     </main>
 
     <footer class="bg-[#121625] py-7 text-white">
       <div
-        class="mx-auto flex w-[min(900px,calc(100%-32px))] items-center justify-between gap-3"
+        class="mx-auto flex w-[min(1180px,calc(100%-32px))] flex-col items-start justify-between gap-3 md:flex-row md:items-center"
       >
-        <strong>Madok</strong
-        ><span class="text-[10px] text-slate-400">© 2026 Madok</span>
+        <div>
+          <strong>Madok</strong>
+          <p class="m-0 text-[10px] text-slate-400 md:text-xs">
+            A location reporting platform
+          </p>
+        </div>
+        <span class="text-[10px] text-slate-400 md:text-xs"
+          >A product of
+          <a
+            href="https://devnotation.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-[#5b46e8]"
+            >Devnotation</a
+          ></span
+        >
+      </div>
+      <div class="mt-2 text-center">
+        <span class="text-[10px] text-slate-400 md:text-xs"
+          >&copy; 2026 Devnotation. All rights reserved.</span
+        >
       </div>
     </footer>
 
@@ -215,6 +312,8 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin=""
     ></script>
+    <script src="../assets/js/search.js?v=1.0.1"></script>
+    <script src="../assets/js/report-form.js?v=2.1.0"></script>
     <script>
       const escapeHtml = (value) =>
         String(value ?? "")
@@ -262,15 +361,16 @@
       let activeFilter = "all";
       let reportsMap = null;
       let reportMarkers = [];
+      let focusMarker = null;
       let editingReport = null;
       let reportedLocation = null;
 
       const typeColor = (type) =>
         type === "sale" ? "#ef4444" : type === "use" ? "#facc15" : "#22c55e";
-      const markerIcon = (type) =>
+      const markerIcon = (type, blink = false) =>
         L.divIcon({
           className: "",
-          html: `<div class="custom-marker" style="background:${typeColor(type)}"><span>${type === "sale" ? "↗" : "●"}</span></div>`,
+          html: `<div class="custom-marker${blink ? " marker-blink" : ""}" style="background:${typeColor(type)}"><span>${type === "sale" ? "↗" : "●"}</span></div>`,
           iconSize: [35, 35],
           iconAnchor: [17, 35],
         });
@@ -281,6 +381,7 @@
       function drawMarkers() {
         reportMarkers.forEach((marker) => reportsMap.removeLayer(marker));
         reportMarkers = [];
+        focusMarker = null;
         allLocations
           .filter(
             (item) =>
@@ -289,14 +390,33 @@
               item.type === "both",
           )
           .forEach((item) => {
+            const isFocus =
+              reportedLocation && String(item.id) === String(locationId);
             const marker = L.marker([Number(item.lat), Number(item.lng)], {
-              icon: markerIcon(item.type),
+              icon: markerIcon(item.type, isFocus),
+              zIndexOffset: isFocus ? 1000 : 0,
             }).addTo(reportsMap);
             marker.bindPopup(
               `<strong>${escapeHtml(item.title)}</strong><br><span>${Number(item.reports).toLocaleString("en-US")} রিপোর্ট</span>`,
             );
+            if (isFocus) {
+              focusMarker = marker;
+              marker.openPopup();
+            }
             reportMarkers.push(marker);
           });
+        if (focusMarker) {
+          setTimeout(() => {
+            const el = focusMarker
+              .getElement()
+              ?.querySelector(".custom-marker");
+            if (el) {
+              el.classList.remove("marker-blink");
+              void el.offsetWidth;
+              el.classList.add("marker-blink");
+            }
+          }, 100);
+        }
       }
       function initReportsMap() {
         const initialCenter = reportedLocation
@@ -310,19 +430,38 @@
           maxZoom: 19,
           attribution: "&copy; OpenStreetMap",
         }).addTo(reportsMap);
+        reportsMap.on("click", (event) => {
+          window.MadokReportForm?.open(event.latlng.lat, event.latlng.lng);
+        });
         drawMarkers();
         setTimeout(() => reportsMap.invalidateSize(), 150);
       }
       function locateUser() {
-        if (!navigator.geolocation) return;
+        const button = document.getElementById("mapLocateBtn");
+        if (!navigator.geolocation || !button || button.disabled) return;
+        const original = button.innerHTML;
+        button.disabled = true;
+        button.classList.add("map-locate-loading");
+        button.innerHTML =
+          '<span class="animate-spin rounded-full border-[3px] border-white/40 border-t-white p-1" aria-label="লোড হচ্ছে"></span>';
+        const restore = () => {
+          button.disabled = false;
+          button.classList.remove("map-locate-loading");
+          button.innerHTML = original;
+        };
         navigator.geolocation.getCurrentPosition(
-          (position) =>
+          (position) => {
             reportsMap.setView(
               [position.coords.latitude, position.coords.longitude],
               16,
               { animate: true },
-            ),
-          () => alert("আপনার বর্তমান লোকেশন পাওয়া যায়নি।"),
+            );
+            restore();
+          },
+          () => {
+            restore();
+            alert("আপনার বর্তমান লোকেশন পাওয়া যায়নি।");
+          },
           { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
         );
       }
@@ -377,29 +516,54 @@
         location.href = `${appBase}/`;
       }
 
-      async function loadReports() {
-        if (!locationId) throw new Error("লোকেশন পাওয়া যায়নি।");
-        const response = await fetch(
-          `${appBase}/api/reports.php?location=${encodeURIComponent(locationId)}`,
-          { headers: { Accept: "application/json" }, cache: "no-store" },
-        );
+      async function voteForReport(reportId, vote, button) {
+        if (button.disabled) return;
+        await securityReady;
+        button.disabled = true;
+        const data = new FormData();
+        data.append("report_id", reportId);
+        data.append("vote", vote);
+        data.append("csrf_token", csrfToken);
+        const response = await fetch(`${appBase}/api/report-vote.php`, {
+          method: "POST",
+          body: data,
+          headers: { Accept: "application/json" },
+          cache: "no-store",
+        });
         const result = await response.json();
         if (!response.ok || !result.ok)
-          throw new Error(result.message || "রিপোর্ট load করা যায়নি।");
-
-        const place = result.location;
-        reportedLocation = { lat: Number(place.lat), lng: Number(place.lng) };
-        if (
-          reportsMap &&
-          Number.isFinite(reportedLocation.lat) &&
-          Number.isFinite(reportedLocation.lng)
-        ) {
-          reportsMap.setView([reportedLocation.lat, reportedLocation.lng], 14, {
-            animate: true,
-          });
+          throw new Error(result.message || "ভোট সংরক্ষণ করা যায়নি।");
+        const report = reports.find(
+          (item) => String(item.id) === String(reportId),
+        );
+        if (report) {
+          report.yes = result.yes;
+          report.no = result.no;
+          report.voted = true;
         }
-        reports = result.reports;
-        summary.innerHTML = `<div class="border-b border-slate-200 pb-5"><p class="mb-2 text-[12px] font-extrabold tracking-[1.5px] text-[#5b46e8]">ALL REPORTS</p><h1 class="m-0 text-3xl font-extrabold">এই লোকেশনের সব রিপোর্ট</h1><p class="mt-2 text-sm text-slate-500">${escapeHtml(place.upazila || place.station || "লোকেশন")} . ${escapeHtml(place.district || "")} . ${escapeHtml(place.division || "")}</p><p class="mt-2 text-sm font-bold text-red-500">মোট রিপোর্ট: ${Number(place.total).toLocaleString("en-US")}</p></div>`;
+        renderVerification();
+      }
+
+      function renderVerification() {
+        const report = reports[0];
+        if (!report) return;
+        const section = document.getElementById("reportVerification");
+        if (!section) return;
+        section.innerHTML = `<p class="text-sm font-bold">এই রিপোর্টগুলো সত্য</p><div class="mt-2 flex flex-wrap items-center gap-2"><button data-vote="yes" data-report="${report.id}" ${report.voted ? "disabled" : ""} class="rounded-lg bg-green-50 px-3 py-2 text-xs font-bold text-green-700 disabled:cursor-not-allowed disabled:opacity-60">হ্যাঁ (${report.yes || 0})</button><button data-vote="no" data-report="${report.id}" ${report.voted ? "disabled" : ""} class="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 disabled:cursor-not-allowed disabled:opacity-60">না (${report.no || 0})</button>${report.voted ? '<span class="text-xs text-slate-500">আপনি ভোট দিয়েছেন</span>' : ""}</div>`;
+        section
+          .querySelectorAll("[data-vote]")
+          .forEach((button) =>
+            button.addEventListener("click", () =>
+              voteForReport(
+                button.dataset.report,
+                button.dataset.vote,
+                button,
+              ).catch((error) => alert(error.message)),
+            ),
+          );
+      }
+
+      function renderReports() {
         list.innerHTML = reports
           .map(
             (report) =>
@@ -425,6 +589,34 @@
             ),
           );
       }
+
+      async function loadReports() {
+        if (!locationId) throw new Error("লোকেশন পাওয়া যায়নি।");
+        const response = await fetch(
+          `${appBase}/api/reports.php?location=${encodeURIComponent(locationId)}`,
+          { headers: { Accept: "application/json" }, cache: "no-store" },
+        );
+        const result = await response.json();
+        if (!response.ok || !result.ok)
+          throw new Error(result.message || "রিপোর্ট load করা যায়নি।");
+
+        const place = result.location;
+        reportedLocation = { lat: Number(place.lat), lng: Number(place.lng) };
+        if (
+          reportsMap &&
+          Number.isFinite(reportedLocation.lat) &&
+          Number.isFinite(reportedLocation.lng)
+        ) {
+          reportsMap.setView([reportedLocation.lat, reportedLocation.lng], 14, {
+            animate: true,
+          });
+          drawMarkers();
+        }
+        reports = result.reports;
+        summary.innerHTML = `<div class="flex flex-col justify-between gap-5 border-b border-slate-200 pb-5 md:flex-row"><div><p class="mb-2 text-[12px] font-extrabold tracking-[1.5px] text-[#5b46e8]">ALL REPORTS</p><h1 class="m-0 text-3xl font-extrabold">এই লোকেশনের সব রিপোর্ট</h1><p class="mt-2 text-sm text-slate-500">${escapeHtml(place.upazila || place.station || "লোকেশন")} . ${escapeHtml(place.district || "")} . ${escapeHtml(place.division || "")}</p><p class="mt-2 text-sm font-bold text-red-500">মোট রিপোর্ট: ${Number(place.total).toLocaleString("en-US")}</p></div><div id="reportVerification" class="shrink-0 md:text-right"></div></div>`;
+        renderVerification();
+        renderReports();
+      }
       async function loadAllLocations() {
         const response = await fetch(`${appBase}/api/locations.php`, {
           headers: { Accept: "application/json" },
@@ -442,7 +634,7 @@
           document
             .querySelectorAll(".filter-btn")
             .forEach((item) =>
-              item.classList.toggle("bg-[#5b46e8]", item === button),
+              item.classList.toggle("active", item === button),
             );
           drawMarkers();
         }),

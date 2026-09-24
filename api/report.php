@@ -223,85 +223,18 @@ if ((int)$rate->fetchColumn() >= 20) {
     json_response(['ok' => false, 'message' => 'অল্প সময়ের মধ্যে অনেকগুলো রিপোর্ট হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।'], 429);
 }
 
-/* Honeypot, if added later to the form. */
+/* Honeypot: silently accept and ignore bot submissions. */
 if (!empty($_POST['website'])) {
-    json_response(['ok' => true, 'message' => 'Report received.']);
+    json_response(['ok' => true, 'ignored' => true, 'message' => 'Report received.']);
 }
 
 $imagePath = null;
 
-if (isset($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE) {
-    $file = $_FILES['image'];
-
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        json_response(['ok' => false, 'message' => 'ছবি upload করা যায়নি।'], 422);
-    }
-    if ($file['size'] > 5 * 1024 * 1024) {
-        json_response(['ok' => false, 'message' => 'ছবির সর্বোচ্চ size 5MB।'], 422);
-    }
-
-    $tmp = $file['tmp_name'];
-    $info = @getimagesize($tmp);
-    if ($info === false) {
-        json_response(['ok' => false, 'message' => 'শুধু valid image upload করুন।'], 422);
-    }
-    if (($info[0] ?? 0) < 1 || ($info[1] ?? 0) < 1 || ($info[0] ?? 0) > 8000 || ($info[1] ?? 0) > 8000) {
-        json_response(['ok' => false, 'message' => 'ছবির dimension সর্বোচ্চ 8000x8000 হতে পারে।'], 422);
-    }
-
-    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
-    $allowed = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!in_array($mime, $allowed, true)) {
-        json_response(['ok' => false, 'message' => 'JPG, PNG অথবা WebP ছবি দিন।'], 422);
-    }
-
-    $uploadDir = dirname(__DIR__) . '/uploads/reports';
-    if (!is_dir($uploadDir) && !mkdir($uploadDir, 0755, true)) {
-        json_response(['ok' => false, 'message' => 'Upload directory তৈরি করা যায়নি।'], 500);
-    }
-
-    $base = bin2hex(random_bytes(16));
-    $saved = false;
-
-    /* Prefer WebP to keep storage low. */
-    if (function_exists('imagecreatefromstring') && function_exists('imagewebp')) {
-        $source = @imagecreatefromstring((string)file_get_contents($tmp));
-        if ($source !== false) {
-            $w = imagesx($source);
-            $h = imagesy($source);
-            $max = 1600;
-            $scale = min(1, $max / max($w, $h));
-            $nw = max(1, (int)round($w * $scale));
-            $nh = max(1, (int)round($h * $scale));
-
-            $canvas = imagecreatetruecolor($nw, $nh);
-            imagealphablending($canvas, false);
-            imagesavealpha($canvas, true);
-            imagecopyresampled($canvas, $source, 0, 0, 0, 0, $nw, $nh, $w, $h);
-
-            $filename = $base . '.webp';
-            $target = $uploadDir . '/' . $filename;
-            $saved = @imagewebp($canvas, $target, 75);
-            imagedestroy($canvas);
-            imagedestroy($source);
-
-            if ($saved) {
-                $imagePath = 'uploads/reports/' . $filename;
-            }
-        }
-    }
-
-    if (!$saved) {
-        $ext = match ($mime) {
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            default => 'webp',
-        };
-        $filename = $base . '.' . $ext;
-        if (!move_uploaded_file($tmp, $uploadDir . '/' . $filename)) {
-            json_response(['ok' => false, 'message' => 'ছবি সংরক্ষণ করা যায়নি।'], 500);
-        }
-        $imagePath = 'uploads/reports/' . $filename;
+if (isset($_FILES['image']) && (int) ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+    try {
+        $imagePath = store_compressed_report_image($_FILES['image']);
+    } catch (RuntimeException $imageError) {
+        json_response(['ok' => false, 'message' => $imageError->getMessage()], 422);
     }
 }
 

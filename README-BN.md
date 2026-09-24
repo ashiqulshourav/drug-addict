@@ -53,6 +53,59 @@
 
 যদি পরে nearest police station auto-assign করতে চাও, `police_stations.latitude` এবং `longitude` পূরণ করে backend-এ nearest-station lookup যোগ করা যাবে।
 
+## Database Migration (আপগ্রেড নির্দেশিকা)
+
+বিদ্যমান ডাটাবেজে নতুন ফিচার (যেমন: রিপোর্ট লাইক/ডিসলাইক কাউন্ট, রিপোর্ট ভোট ট্র্যাকিং, এবং সাইট ভিজিটর কাউন্টার) যোগ করতে `database.migration.sql` ফাইলটি একবার রান করুন:
+
+```sql
+-- database.migration.sql
+ALTER TABLE reports
+    ADD COLUMN yes_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER created_at,
+    ADD COLUMN no_count INT UNSIGNED NOT NULL DEFAULT 0 AFTER yes_count;
+
+CREATE TABLE report_votes (
+    report_id BIGINT UNSIGNED NOT NULL,
+    voter_hash CHAR(64) NOT NULL,
+    vote ENUM('yes', 'no') NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (report_id, voter_hash),
+    CONSTRAINT fk_report_vote_report FOREIGN KEY (report_id)
+        REFERENCES reports(id) ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS site_visits (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    ip_hash CHAR(64) NOT NULL,
+    visited_date DATE NOT NULL,
+    visit_count INT UNSIGNED NOT NULL DEFAULT 1,
+    last_visited_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_ip_date (ip_hash, visited_date),
+    INDEX idx_visited_date (visited_date)
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+## Cloudflare Turnstile প্রোডাকশন নির্দেশিকা
+
+1. Cloudflare ড্যাশবোর্ডে গিয়ে Turnstile সাইট কি এবং সিক্রেট কি সংগ্রহ করুন।
+2. `.env` ফাইলে নিচের মানগুলো আপডেট করুন:
+   ```env
+   TURNSTILE_ENABLED=true
+   TURNSTILE_SITE_KEY=0x4AAAAAA...
+   TURNSTILE_SECRET_KEY=0x4AAAAAA...
+   TURNSTILE_ALLOWED_HOSTNAMES=yourdomain.com,www.yourdomain.com
+   TURNSTILE_LOCAL_TEST=false
+   ```
+3. লোকাল ডেভেলপমেন্ট চলাকালীন `TURNSTILE_LOCAL_TEST=true` সেট থাকলে ক্যাপচা স্বয়ংক্রিয়ভাবে লোকাল সেশন টোকেন দিয়ে বাইপাস হয়ে টেস্টিং সহজ করে। প্রোডাকশনে অবশ্যই এটি `false` রাখবেন।
+
+## সিকিউরিটি ও প্রোডাকশন অডিট চেকলিস্ট
+
+- [ ] **Document Root**: ওয়েব সার্ভারের document root `public/` ডিরেক্টরিতে পয়েন্ট করা (যাতে `config/`, `.env`, `storage/` সরাসরি পাবলিক ওয়েব থেকে অ্যাক্সেসযোগ্য না থাকে)।
+- [ ] **File Permissions**: `public/uploads/reports` এবং `storage/rate-limit` ডিরেক্টরিতে ওয়েব সার্ভারের রাইট পারমিশন আছে কিন্তু সেখানে স্ক্রিপ্ট এক্সিকিউশন নিষিদ্ধ (`.htaccess` দ্বারা সুরক্ষিত)।
+- [ ] **HTTPS ও SSL**: সম্পূর্ণ ট্রাফিকের জন্য HTTPS বাধ্যতামূলক করা।
+- [ ] **Rate Limiting**: ফাইল-ব্যাকড রেট লিমিটিং ডিফল্টভাবে সক্রিয় (গ্লোবাল, রিপোর্ট সাবমিশন, ভোট এবং এডিট রিকোয়েস্টে ব্রুট-ফোর্স রোধ)।
+- [ ] **XSS ও SQL Injection**: সকল ডাটাবেজ কোয়েরি PDO Prepared Statements দিয়ে সুরক্ষিত এবং আউটপুটে HTML এনকোডিং নিশ্চিত করা হয়েছে।
+- [ ] **CSRF ও Honeypot**: প্রতিটি স্টেট-চেঞ্জিং ফর্ম সাবমিশনে CSRF টোকেন ভেরিফিকেশন এবং অ্যান্টি-বট হানিপট সক্রিয়।
+
 ## গুরুত্বপূর্ণ
 
 `config/database.php`, `.env`, database dump, `storage/`, `data/`, `tools/` public repository বা public document root-এ রাখবে না। বর্তমান `.htaccess` এগুলো block করে, তবে আলাদা `public/` document root আরও নিরাপদ।
@@ -60,3 +113,4 @@
 ## Quick test
 
 Production-এ health endpoint public রাখা হয়নি; প্রয়োজনে hosting-এর local/admin-only check দিয়ে PHP → MySQL connection যাচাই করো।
+

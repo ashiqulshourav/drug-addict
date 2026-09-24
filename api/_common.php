@@ -225,6 +225,140 @@ function clean_text(mixed $value, int $max): string
     return function_exists('mb_substr') ? mb_substr($value, 0, $max, 'UTF-8') : substr($value, 0, $max);
 }
 
+/**
+ * Validate, re-encode and store an uploaded report image.
+ *
+ * Security:
+ *  - real upload check (is_uploaded_file)
+ *  - size + dimension limits
+ *  - magic-byte type detection (getimagesize) and MIME cross-check (finfo)
+ *  - random filename, fixed safe extension; PHP execution is blocked in
+ *    the uploads directory through .htaccess
+ *  - re-encoding through GD strips EXIF/metadata and any embedded payload
+ *
+ * Size:
+ *  - resized to max 1600px, converted to WebP and the quality is stepped
+ *    down until the file fits the target size budget.
+ *
+ * Returns the relative path (e.g. uploads/reports/abc.webp).
+ * Throws RuntimeException with a user-safe message on failure.
+ */
+function store_compressed_report_image(array $file, string $relativeDir = 'uploads/reports'): string
+{
+    $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+    if ($error !== UPLOAD_ERR_OK) {
+        throw new RuntimeException('ছবি upload করা যায়নি।');
+    }
+
+    if ((int) ($file['size'] ?? 0) > 5 * 1024 * 1024) {
+        throw new RuntimeException('ছবির সর্বোচ্চ size 5MB।');
+    }
+
+    $tmp = (string) ($file['tmp_name'] ?? '');
+    if ($tmp === '' || !is_uploaded_file($tmp)) {
+        throw new RuntimeException('শুধু valid image upload করুন।');
+    }
+
+    $info = @getimagesize($tmp);
+    if ($info === false) {
+        throw new RuntimeException('শুধু valid image upload করুন।');
+    }
+
+    $width = (int) ($info[0] ?? 0);
+    $height = (int) ($info[1] ?? 0);
+    if ($width < 1 || $height < 1 || $width > 8000 || $height > 8000) {
+        throw new RuntimeException('ছবির dimension সর্বোচ্চ 8000x8000 হতে পারে।');
+    }
+
+    $allowedMime = [
+        IMAGETYPE_JPEG => 'image/jpeg',
+        IMAGETYPE_PNG => 'image/png',
+        IMAGETYPE_WEBP => 'image/webp',
+    ];
+    $detectedType = (int) ($info[2] ?? 0);
+    if (!isset($allowedMime[$detectedType])) {
+        throw new RuntimeException('JPG, PNG অথবা WebP ছবি দিন।');
+    }
+
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($tmp);
+    if (!in_array($mime, array_values($allowedMime), true)) {
+        throw new RuntimeException('JPG, PNG অথবা WebP ছবি দিন।');
+    }
+
+    $relativeDir = trim($relativeDir, '/');
+    $uploadDir = dirname(__DIR__) . '/' . $relativeDir;
+    if (!is_dir($uploadDir) && !@mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+        throw new RuntimeException('Upload directory তৈরি করা যায়নি।');
+    }
+
+    $base = bin2hex(random_bytes(16));
+
+    /* ---------------- WebP re-encode (preferred) ---------------- */
+    if (function_exists('imagecreatefromstring') && function_exists('imagewebp')) {
+        $raw = (string) @file_get_contents($tmp);
+        $source = $raw !== '' ? @imagecreatefromstring($raw) : false;
+
+        if ($source !== false) {
+            $sourceWidth = imagesx($source);
+            $sourceHeight = imagesy($source);
+            $scale = min(1, 1600 / max(1, max($sourceWidth, $sourceHeight)));
+            $newWidth = max(1, (int) round($sourceWidth * $scale));
+            $newHeight = max(1, (int) round($sourceHeight * $scale));
+
+            $canvas = @imagecreatetruecolor($newWidth, $newHeight);
+
+            if ($canvas === false) {
+                imagedestroy($source);
+            } else {
+                imagealphablending($canvas, false);
+                imagesavealpha($canvas, true);
+                $transparent = @imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+                if ($transparent !== false) {
+                    imagefilledrectangle($canvas, 0, 0, $newWidth, $newHeight, $transparent);
+                }
+                imagecopyresampled($canvas, $source, 0, 0, 0, 0, $newWidth, $newHeight, $sourceWidth, $sourceHeight);
+                imagedestroy($source);
+
+                $target = $uploadDir . '/' . $base . '.webp';
+                $quality = 78;
+                $saved = @imagewebp($canvas, $target, $quality);
+
+                /* Keep stepping the quality down while the file stays too big. */
+                while ($saved && (int) @filesize($target) > 400 * 1024 && $quality > 45) {
+                    $quality -= 12;
+                    $saved = @imagewebp($canvas, $target, $quality);
+                }
+
+                imagedestroy($canvas);
+
+                if ($saved && (int) @filesize($target) > 0) {
+                    @chmod($target, 0644);
+                    return $relativeDir . '/' . $base . '.webp';
+                }
+
+                if (is_file($target)) {
+                    @unlink($target);
+                }
+            }
+        }
+    }
+
+    /* ---------------- Fallback: store the validated original ---------------- */
+    $extension = match ($mime) {
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        default => 'webp',
+    };
+
+    $target = $uploadDir . '/' . $base . '.' . $extension;
+    if (!move_uploaded_file($tmp, $target)) {
+        throw new RuntimeException('ছবি সংরক্ষণ করা যায়নি।');
+    }
+    @chmod($target, 0644);
+
+    return $relativeDir . '/' . $base . '.' . $extension;
+}
+
 function client_ip(): string
 {
     $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');

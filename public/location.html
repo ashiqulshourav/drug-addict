@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="নির্দিষ্ট এলাকা, থানা বা জেলার মাদক সংক্রান্ত স্পট ও পরিসংখ্যান বিবরণী।" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="লোকেশন বিবরণী - মাদক" />
+    <meta property="og:description" content="নির্দিষ্ট এলাকা, থানা বা জেলার মাদক সংক্রান্ত স্পট ও পরিসংখ্যান বিবরণী।" />
+    <meta property="og:locale" content="bn_BD" />
+    <meta name="twitter:card" content="summary" />
     <title>লোকেশন - মাদক</title>
     <link rel="stylesheet" href="./assets/css/app.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -205,7 +212,8 @@
       crossorigin=""
     ></script>
     <script src="./assets/js/search.js?v=1.0.1"></script>
-    <script src="./assets/js/report-form.js?v=2.1.0"></script>
+    <script src="./assets/js/report-form.js?v=2.2.0"></script>
+    <script src="./assets/js/visitor.js?v=1.0.0"></script>
     <script>
       (() => {
         const appBase = location.pathname.replace(/\/[^/]*$/, "");
@@ -234,7 +242,13 @@
             html: `<div class="custom-marker" style="background:${typeColor(t)}"><span>${t === "sale" ? "↗" : "●"}</span></div>`,
             iconSize: [35, 35],
             iconAnchor: [17, 35],
+            popupAnchor: [0, -34],
           });
+        /* Same popup markup as the home page map. */
+        const buildPopup = (item) =>
+          typeof window.MadokPopup?.buildLocationPopup === "function"
+            ? window.MadokPopup.buildLocationPopup(item, appBase)
+            : `<strong>${esc(item.title)}</strong><br>${Number(item.reports).toLocaleString("en-US")} রিপোর্ট`;
         const card = (label, value) =>
           `<article class="rounded-xl border border-slate-200 bg-white p-4"><span class="text-xs text-slate-500">${label}</span><strong class="mt-1 block text-2xl font-extrabold">${Number(value || 0).toLocaleString("en-US")}</strong></article>`;
         const drawMarkers = () => {
@@ -252,9 +266,7 @@
                 icon: markerIcon(item.type),
               })
                 .addTo(map)
-                .bindPopup(
-                  `<strong>${esc(item.title)}</strong><br>${item.reports} রিপোর্ট`,
-                );
+                .bindPopup(buildPopup(item));
               markers.push(marker);
             });
         };
@@ -300,26 +312,38 @@
         );
         document.getElementById("locationLocateBtn").onclick = () => {
           const b = document.getElementById("locationLocateBtn");
-          if (!navigator.geolocation || b.disabled) return;
+          if (b.disabled || !map) return;
           const html = b.innerHTML;
           b.disabled = true;
           b.classList.add("map-loading");
           b.innerHTML =
             '<span class="animate-spin rounded-full border-[3px] border-white/40 border-t-white p-1"></span>';
-          navigator.geolocation.getCurrentPosition(
-            (p) => {
-              map.setView([p.coords.latitude, p.coords.longitude], 16, {
-                animate: true,
-              });
-              b.disabled = false;
-              b.classList.remove("map-loading");
-              b.innerHTML = html;
+          const restore = () => {
+            b.disabled = false;
+            b.classList.remove("map-loading");
+            b.innerHTML = html;
+          };
+
+          /* Instant jump when a recent fix is already cached. */
+          const cached = window.MadokGeo?.cached?.();
+          if (cached) {
+            map.setView([cached.lat, cached.lng], 16, { animate: true });
+            restore();
+            return;
+          }
+
+          const locate = window.MadokGeo?.locate;
+          if (typeof locate !== "function" || !navigator.geolocation) {
+            restore();
+            return;
+          }
+
+          locate(
+            (lat, lng) => {
+              map.setView([lat, lng], 16, { animate: true });
+              restore();
             },
-            () => {
-              b.disabled = false;
-              b.classList.remove("map-loading");
-              b.innerHTML = html;
-            },
+            restore,
           );
         };
         load().catch((e) => (error.textContent = e.message));

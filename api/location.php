@@ -13,8 +13,13 @@ try {
     $pdo = db();
     $where = match ($type) {
         'division' => 'dv.slug = ?',
-        'district' => 'd.slug = ?',
-        'upazila' => 'CONCAT(d.slug, \'/\', u.slug) = ?',
+        'district' => 'IF(LOCATE(\'/\', ?) > 0, CONCAT(dv.slug, \'/\', d.slug) = ?, d.slug = ?)',
+        'upazila' => 'IF(LOCATE(\'/\', ?) > 0, CONCAT(d.slug, \'/\', u.slug) = ?, u.slug = ?)',
+    };
+    $queryParams = match ($type) {
+        'division' => [$slug],
+        'district' => [$slug, $slug, $slug],
+        'upazila' => [$slug, $slug, $slug],
     };
     $stmt = $pdo->prepare("SELECT
         COALESCE(NULLIF(dv.bn_name, ''), dv.name) AS division,
@@ -31,7 +36,7 @@ try {
         LEFT JOIN locations l ON l.upazila_id = u.id OR l.police_station_id = ps.id
         LEFT JOIN reports r ON r.location_id = l.id
         WHERE {$where}");
-    $stmt->execute([$slug]);
+    $stmt->execute($queryParams);
     $stats = $stmt->fetch();
     if (!$stats || ($stats['division'] ?? '') === '') json_response(['ok' => false, 'message' => 'Location not found.'], 404);
 
@@ -60,7 +65,7 @@ try {
         LEFT JOIN police_stations ps ON ps.id = l.police_station_id
         WHERE {$where} AND l.latitude IS NOT NULL AND l.longitude IS NOT NULL
         ORDER BY l.updated_at DESC LIMIT 500");
-    $map->execute([$slug]);
+    $map->execute($queryParams);
     $locations = array_map(static fn(array $row): array => [
         'id' => (int) $row['id'],
         'lat' => (float) $row['lat'],

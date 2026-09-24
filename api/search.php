@@ -24,10 +24,12 @@ try {
         ],
         [
             'district',
-            "SELECT slug, name, bn_name, latitude, longitude
-             FROM districts
-             WHERE name LIKE ? OR bn_name LIKE ?
-             ORDER BY name
+            "SELECT CONCAT(dv.slug, '/', d.slug) AS slug, d.name, d.bn_name, d.latitude, d.longitude,
+                    dv.slug AS division_slug
+             FROM districts d
+             JOIN divisions dv ON dv.id = d.division_id
+             WHERE d.name LIKE ? OR d.bn_name LIKE ?
+             ORDER BY d.name
              LIMIT 10",
         ],
         [
@@ -42,9 +44,10 @@ try {
         [
             'police_station',
             "SELECT CAST(ps.id AS CHAR) AS slug, ps.name, ps.name AS bn_name, ps.latitude, ps.longitude,
-                    d.slug AS district_slug
+                    CONCAT(dv.slug, '/', d.slug) AS district_slug
              FROM police_stations ps
              JOIN districts d ON d.id = ps.district_id
+             JOIN divisions dv ON dv.id = d.division_id
              WHERE ps.name LIKE ?
              ORDER BY ps.name
              LIMIT 10",
@@ -78,6 +81,9 @@ try {
                 'lat' => $lat,
                 'lng' => $lng,
             ];
+            if (!empty($row['division_slug'])) {
+                $item['division_slug'] = (string) $row['division_slug'];
+            }
             if (!empty($row['district_slug'])) {
                 $item['district_slug'] = (string) $row['district_slug'];
             }

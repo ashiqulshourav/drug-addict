@@ -1,5 +1,26 @@
 Options -Indexes
 
-<FilesMatch "\.(?:php|phar|phtml|php[0-9]*)$">
+# Uploaded files must never be executed or interpreted.
+<FilesMatch "\.(?:php|phar|phtml|phps|pht|php[0-9]*|cgi|pl|py|shtml)$">
     Require all denied
 </FilesMatch>
+
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+<IfModule mod_mime.c>
+    RemoveHandler .php .phtml .phar .php3 .php4 .php5 .php7 .php8 .pht
+    RemoveType .php .phtml .phar .php3 .php4 .php5 .php7 .php8 .pht
+    # Serve images with the correct MIME type (X-Content-Type-Options: nosniff is on).
+    AddType image/jpeg .jpg .jpeg
+    AddType image/png .png
+    AddType image/webp .webp
+    AddType image/gif .gif
+</IfModule>

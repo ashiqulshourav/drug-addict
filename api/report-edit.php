@@ -85,52 +85,12 @@ try {
     if (($_POST['removeImage'] ?? '') === '1') {
         $imagePath = null;
     }
-    if (isset($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE) {
-        $file = $_FILES['image'];
-        if ($file['error'] !== UPLOAD_ERR_OK || $file['size'] > 5 * 1024 * 1024) {
+    if (isset($_FILES['image']) && (int) ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        try {
+            $imagePath = store_compressed_report_image($_FILES['image']);
+        } catch (RuntimeException $imageError) {
             $pdo->rollBack();
-            json_response(['ok' => false, 'message' => 'ছবি upload করা যায়নি বা size 5MB-এর বেশি।'], 422);
-        }
-        $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
-        $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-        $info = @getimagesize($file['tmp_name']);
-        if (!isset($allowed[$mime]) || $info === false || ($info[0] ?? 0) < 1 || ($info[1] ?? 0) < 1 || ($info[0] ?? 0) > 8000 || ($info[1] ?? 0) > 8000) {
-            $pdo->rollBack();
-            json_response(['ok' => false, 'message' => 'শুধু valid JPG, PNG অথবা WebP ছবি দিন।'], 422);
-        }
-        $dir = dirname(__DIR__) . '/uploads/reports';
-        if (!is_dir($dir) && !mkdir($dir, 0755, true)) {
-            $pdo->rollBack();
-            json_response(['ok' => false, 'message' => 'Upload directory তৈরি করা যায়নি।'], 500);
-        }
-        $base = bin2hex(random_bytes(16));
-        $saved = false;
-        if (function_exists('imagecreatefromstring') && function_exists('imagewebp')) {
-            $source = @imagecreatefromstring((string) file_get_contents($file['tmp_name']));
-            if ($source !== false) {
-                $width = imagesx($source);
-                $height = imagesy($source);
-                $scale = min(1, 1600 / max($width, $height));
-                $newWidth = max(1, (int) round($width * $scale));
-                $newHeight = max(1, (int) round($height * $scale));
-                $canvas = imagecreatetruecolor($newWidth, $newHeight);
-                imagealphablending($canvas, false);
-                imagesavealpha($canvas, true);
-                imagecopyresampled($canvas, $source, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
-                $filename = $base . '.webp';
-                $saved = @imagewebp($canvas, $dir . '/' . $filename, 75);
-                imagedestroy($canvas);
-                imagedestroy($source);
-                if ($saved) $imagePath = 'uploads/reports/' . $filename;
-            }
-        }
-        if (!$saved) {
-            $filename = $base . '.' . $allowed[$mime];
-            if (!move_uploaded_file($file['tmp_name'], $dir . '/' . $filename)) {
-                $pdo->rollBack();
-                json_response(['ok' => false, 'message' => 'ছবি সংরক্ষণ করা যায়নি।'], 500);
-            }
-            $imagePath = 'uploads/reports/' . $filename;
+            json_response(['ok' => false, 'message' => $imageError->getMessage()], 422);
         }
     }
 

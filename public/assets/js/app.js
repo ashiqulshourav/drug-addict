@@ -921,9 +921,6 @@ async function loadBackendData() {
     const text =
         await response.text();
 
-        // console.log(text, 'texxxxxxxxxxxxxxxxxxxxxxxt')
-
-
     console.log(
         "[Madok] Statistics HTTP:",
         response.status
@@ -1233,6 +1230,75 @@ function renderLocationHighlights(result, resetVisible = false) {
 
 
 /* =========================================================
+   FAST GEOLOCATION
+   Returns a cheap (network / cached) fix first so the map can
+   jump to the user immediately, then refines with GPS.
+   ========================================================= */
+
+const GEO_FAST_OPTIONS = { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 };
+const GEO_PRECISE_OPTIONS = { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 };
+const GEO_CACHE_MS = 120000;
+
+let cachedGeoPosition = null;
+
+function geoRemember(lat, lng) {
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    cachedGeoPosition = { lat: latitude, lng: longitude, at: Date.now() };
+    return cachedGeoPosition;
+}
+
+function geoReadCache(maxAge = GEO_CACHE_MS) {
+    if (!cachedGeoPosition) return null;
+    if (Date.now() - cachedGeoPosition.at > maxAge) return null;
+    return cachedGeoPosition;
+}
+
+function geoReadPosition(options) {
+    return new Promise(function(resolve, reject) {
+        if (!navigator.geolocation) {
+            reject(new Error("Geolocation unsupported"));
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+    });
+}
+
+function geoPrewarm() {
+    if (geoReadCache()) return;
+    geoReadPosition(GEO_FAST_OPTIONS)
+        .then(function(position) {
+            geoRemember(position.coords.latitude, position.coords.longitude);
+        })
+        .catch(function() {
+            // Silently ignored: the map picker will ask again on demand.
+        });
+}
+
+async function geoLocateFast(onUpdate, onError) {
+    let resolved = false;
+
+    try {
+        const fast = await geoReadPosition(GEO_FAST_OPTIONS);
+        resolved = true;
+        geoRemember(fast.coords.latitude, fast.coords.longitude);
+        if (onUpdate) onUpdate(fast.coords.latitude, fast.coords.longitude, false);
+    } catch (error) {
+        // Fall through to the precise request below.
+    }
+
+    try {
+        const precise = await geoReadPosition(GEO_PRECISE_OPTIONS);
+        geoRemember(precise.coords.latitude, precise.coords.longitude);
+        if (onUpdate) onUpdate(precise.coords.latitude, precise.coords.longitude, true);
+    } catch (error) {
+        if (!resolved && onError) onError(error);
+    }
+}
+
+
+/* =========================================================
    MAIN MAP CURRENT LOCATION
    ========================================================= */
 
@@ -1412,10 +1478,18 @@ function locateUser(targetId = "map") {
                 500
             );
 
-            document.getElementById(targetId)?.scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
+            const mapEl = document.getElementById("map");
+            if (mapEl) {
+                mapEl.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center"
+                });
+            } else {
+                document.getElementById(targetId)?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center"
+                });
+            }
 
 
             showToast(
@@ -1467,11 +1541,11 @@ function locateUser(targetId = "map") {
 
 
         {
-            enableHighAccuracy: true,
+            enableHighAccuracy: false,
 
-            timeout: 15000,
+            timeout: 8000,
 
-            maximumAge: 30000
+            maximumAge: 300000
         }
     );
 }
@@ -1516,16 +1590,22 @@ function getCurrentLocationForReport() {
     }
 
 
-    navigator.geolocation.getCurrentPosition(
+    /* Instant result when a recent fix is already cached. */
+    const cached = geoReadCache();
+    let notified = false;
 
-        function(position) {
+    if (cached) {
+        setSelectedLocation(cached.lat, cached.lng);
 
-            const lat =
-                position.coords.latitude;
+        showToast(
+            "লোকেশন পাওয়া গেছে",
+            "আপনার বর্তমান লোকেশন রিপোর্টের জন্য নির্বাচন করা হয়েছে।"
+        );
+    }
 
-            const lng =
-                position.coords.longitude;
+    geoLocateFast(
 
+        function(lat, lng) {
 
             setSelectedLocation(
                 lat,
@@ -1536,10 +1616,15 @@ function getCurrentLocationForReport() {
             restoreReportLocationButton();
 
 
-            showToast(
-                "লোকেশন পাওয়া গেছে",
-                "আপনার বর্তমান লোকেশন রিপোর্টের জন্য নির্বাচন করা হয়েছে।"
-            );
+            if (!cached && !notified) {
+
+                notified = true;
+
+                showToast(
+                    "লোকেশন পাওয়া গেছে",
+                    "আপনার বর্তমান লোকেশন রিপোর্টের জন্য নির্বাচন করা হয়েছে।"
+                );
+            }
         },
 
 
@@ -1554,6 +1639,11 @@ function getCurrentLocationForReport() {
             restoreReportLocationButton();
 
 
+            if (cached) {
+                return;
+            }
+
+
             const message = error.code === 1
                 ? "Browser location permission দিন।"
                 : error.code === 3
@@ -1561,15 +1651,6 @@ function getCurrentLocationForReport() {
                     : "বর্তমান অবস্থান পাওয়া যাচ্ছে না। ম্যাপ থেকে লোকেশন নির্বাচন করুন।";
 
             showToast("লোকেশন পাওয়া যায়নি", message);
-        },
-
-
-        {
-            enableHighAccuracy: true,
-
-            timeout: 15000,
-
-            maximumAge: 30000
         }
     );
 }
@@ -1730,6 +1811,13 @@ function openReportModal() {
 
     document.body.style.overflow =
         "hidden";
+
+
+    /*
+     * Warm the geolocation cache so "ম্যাপ থেকে নির্বাচন করুন"
+     * opens on the user's location instantly.
+     */
+    geoPrewarm();
 }
 
 
@@ -1940,20 +2028,19 @@ function openLocationPicker() {
     initLocationPickerMap();
 
 
-    setTimeout(
-        function() {
+    /* Already-selected location: just show it, no lookup needed. */
+    if (
+        selectedMapLocation
+    ) {
 
-            if (!locationPickerMap) {
-                return;
-            }
+        requestAnimationFrame(
+            function() {
 
+                if (!locationPickerMap) {
+                    return;
+                }
 
-            locationPickerMap.invalidateSize();
-
-
-            if (
-                selectedMapLocation
-            ) {
+                locationPickerMap.invalidateSize();
 
                 locationPickerMap.setView(
                     [
@@ -1962,14 +2049,27 @@ function openLocationPicker() {
                     ],
                     16
                 );
-
-            } else {
-
-                getUserLocationForPicker();
             }
+        );
+
+        return;
+    }
+
+
+    /*
+     * Start the lookup immediately instead of waiting for the
+     * modal animation, so the map centres much faster.
+     */
+    getUserLocationForPicker();
+
+
+    setTimeout(
+        function() {
+
+            locationPickerMap?.invalidateSize();
 
         },
-        200
+        150
     );
 }
 
@@ -1985,29 +2085,41 @@ function getUserLocationForPicker() {
     }
 
 
+    /* Instant centring when a recent fix is already cached. */
+    const cached = geoReadCache();
+
+    if (cached) {
+
+        locationPickerMap.invalidateSize();
+
+        selectMapLocation(
+            cached.lat,
+            cached.lng
+        );
+    }
+
+
     if (
         !navigator.geolocation
     ) {
 
-        locationPickerMap.setView(
-            DEFAULT_CENTER,
-            13
-        );
+        if (!cached) {
+
+            locationPickerMap.setView(
+                DEFAULT_CENTER,
+                13
+            );
+        }
 
         return;
     }
 
 
-    navigator.geolocation.getCurrentPosition(
+    geoLocateFast(
 
-        function(position) {
+        function(lat, lng) {
 
-            const lat =
-                position.coords.latitude;
-
-            const lng =
-                position.coords.longitude;
-
+            locationPickerMap?.invalidateSize();
 
             selectMapLocation(
                 lat,
@@ -2024,6 +2136,11 @@ function getUserLocationForPicker() {
             );
 
 
+            if (cached) {
+                return;
+            }
+
+
             locationPickerMap.setView(
                 DEFAULT_CENTER,
                 13
@@ -2035,15 +2152,6 @@ function getUserLocationForPicker() {
                 pickerCoordinates.textContent =
                     "বর্তমান লোকেশন পাওয়া যায়নি। ম্যাপে ক্লিক করে নির্বাচন করুন।";
             }
-        },
-
-
-        {
-            enableHighAccuracy: true,
-
-            timeout: 10000,
-
-            maximumAge: 30000
         }
     );
 }
@@ -2295,11 +2403,11 @@ function locateUserOnPickerMap() {
         button.innerHTML = originalHtml;
     };
 
-    navigator.geolocation.getCurrentPosition(
-        function(position) {
+    geoLocateFast(
+        function(lat, lng) {
             selectMapLocation(
-                position.coords.latitude,
-                position.coords.longitude
+                lat,
+                lng
             );
             restore();
         },
@@ -2309,8 +2417,7 @@ function locateUserOnPickerMap() {
                 "লোকেশন পাওয়া যায়নি",
                 "আপনার বর্তমান লোকেশন পাওয়া যায়নি।"
             );
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+        }
     );
 }
 
@@ -2319,16 +2426,39 @@ function locateUserOnPickerMap() {
    IMAGE COMPRESSION
    ========================================================= */
 
-async function compressImageFile(file, maxDimension = 1600, quality = 0.75) {
+const TARGET_IMAGE_BYTES = 300 * 1024;
+
+function canvasToBlob(canvas, quality) {
+    return new Promise(function(resolve) {
+        canvas.toBlob(resolve, "image/webp", quality);
+    });
+}
+
+/**
+ * Compress + resize an image in the browser before upload.
+ * Converts to WebP and steps the quality down until the file is small
+ * enough, so large phone photos do not waste storage or bandwidth.
+ */
+async function compressImageFile(file, maxDimension = 1600) {
     if (!file || !file.type.startsWith("image/")) {
         return file;
     }
-    if (file.size <= 350 * 1024) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+        return file;
+    }
+    if (file.size <= 120 * 1024) {
+        return file;
+    }
+
+    let bitmap;
+
+    try {
+        bitmap = await createImageBitmap(file);
+    } catch (error) {
         return file;
     }
 
     try {
-        const bitmap = await createImageBitmap(file);
         const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
         const width = Math.max(1, Math.round(bitmap.width * scale));
         const height = Math.max(1, Math.round(bitmap.height * scale));
@@ -2337,21 +2467,24 @@ async function compressImageFile(file, maxDimension = 1600, quality = 0.75) {
         canvas.height = height;
         const context = canvas.getContext("2d", { alpha: true });
         if (!context) {
-            bitmap.close?.();
             return file;
         }
         context.drawImage(bitmap, 0, 0, width, height);
-        bitmap.close?.();
 
-        const blob = await new Promise(function(resolve) {
-            canvas.toBlob(resolve, "image/webp", quality);
-        });
+        let quality = 0.78;
+        let blob = await canvasToBlob(canvas, quality);
+        while (blob && blob.size > TARGET_IMAGE_BYTES && quality > 0.4) {
+            quality -= 0.12;
+            const next = await canvasToBlob(canvas, quality);
+            if (!next || next.size >= blob.size) break;
+            blob = next;
+        }
 
         if (!blob || blob.size <= 0 || blob.size >= file.size) {
             return file;
         }
 
-        const baseName = String(file.name || "report-image").replace(/\.[^.]+$/, "");
+        const baseName = String(file.name || "report-image").replace(/\.[^.]+$/, "") || "report-image";
         return new File([blob], `${baseName}.webp`, {
             type: "image/webp",
             lastModified: Date.now()
@@ -2359,6 +2492,8 @@ async function compressImageFile(file, maxDimension = 1600, quality = 0.75) {
     } catch (error) {
         console.warn("[Madok] Image compression skipped:", error);
         return file;
+    } finally {
+        bitmap.close?.();
     }
 }
 
@@ -2550,9 +2685,6 @@ function renderStationTable(
         document.getElementById(
             "stationTableBody"
         );
-
-        // console.log(data)
-
 
     if (!tbody) {
         return;
@@ -2821,8 +2953,6 @@ async function loadStatisticsByDivision(
 
       result =
         JSON.parse(text);
-
-        console.log(result, 'resulttttttttttttttttt')
 
     } catch (error) {
 
@@ -3309,7 +3439,7 @@ async function handleReportSubmit(
     }
 
     if (!title) {
-        setValidationState(titleInput, "reportTitleError", "দয়া করে রিপোর্টের শিরোনাম লিখুন।");
+        setValidationState(titleInput, "reportTitleError", "দয়া করে রিপোর্টের শিরোনাম লিখুন।");
     } else {
         clearValidationState(titleInput, "reportTitleError");
     }
@@ -3620,6 +3750,19 @@ async function handleReportSubmit(
         closeReportModal();
 
 
+        const newLocationId =
+            result.location_id ?? result.locationId;
+
+
+        /*
+         * Honeypot / silently ignored submission:
+         * the server accepted the request but stored nothing.
+         */
+        if (!newLocationId) {
+            return;
+        }
+
+
         showToast(
             "রিপোর্ট গ্রহণ করা হয়েছে",
 
@@ -3633,7 +3776,7 @@ async function handleReportSubmit(
 
         window.location.href =
             "reports/" +
-            encodeURIComponent(result.location_id);
+            encodeURIComponent(newLocationId);
 
 
         /*

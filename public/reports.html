@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="মাদক সংক্রান্ত সকল নাগরিক রিপোর্ট, যাচাই এবং কমিউনিটি মতামত তালিকা।" />
+    <meta name="robots" content="index, follow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Madok - সব রিপোর্ট" />
+    <meta property="og:description" content="মাদক সংক্রান্ত সকল নাগরিক রিপোর্ট, যাচাই এবং কমিউনিটি মতামত তালিকা।" />
+    <meta property="og:locale" content="bn_BD" />
+    <meta name="twitter:card" content="summary" />
     <title>Madok - সব রিপোর্ট</title>
     <link rel="stylesheet" href="../assets/css/app.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -313,7 +320,8 @@
       crossorigin=""
     ></script>
     <script src="../assets/js/search.js?v=1.0.1"></script>
-    <script src="../assets/js/report-form.js?v=2.1.0"></script>
+    <script src="../assets/js/report-form.js?v=2.2.0"></script>
+    <script src="../assets/js/visitor.js?v=1.0.0"></script>
     <script>
       const escapeHtml = (value) =>
         String(value ?? "")
@@ -373,7 +381,13 @@
           html: `<div class="custom-marker${blink ? " marker-blink" : ""}" style="background:${typeColor(type)}"><span>${type === "sale" ? "↗" : "●"}</span></div>`,
           iconSize: [35, 35],
           iconAnchor: [17, 35],
+          popupAnchor: [0, -34],
         });
+      /* Same popup markup as the home page map. */
+      const buildPopup = (item) =>
+        typeof window.MadokPopup?.buildLocationPopup === "function"
+          ? window.MadokPopup.buildLocationPopup(item, appBase)
+          : `<strong>${escapeHtml(item.title)}</strong><br><span>${Number(item.reports).toLocaleString("en-US")} রিপোর্ট</span>`;
       const setModal = (element, open) => {
         element.classList.toggle("hidden", !open);
         element.classList.toggle("flex", open);
@@ -396,9 +410,7 @@
               icon: markerIcon(item.type, isFocus),
               zIndexOffset: isFocus ? 1000 : 0,
             }).addTo(reportsMap);
-            marker.bindPopup(
-              `<strong>${escapeHtml(item.title)}</strong><br><span>${Number(item.reports).toLocaleString("en-US")} রিপোর্ট</span>`,
-            );
+            marker.bindPopup(buildPopup(item));
             if (isFocus) {
               focusMarker = marker;
               marker.openPopup();
@@ -438,7 +450,7 @@
       }
       function locateUser() {
         const button = document.getElementById("mapLocateBtn");
-        if (!navigator.geolocation || !button || button.disabled) return;
+        if (!button || button.disabled || !reportsMap) return;
         const original = button.innerHTML;
         button.disabled = true;
         button.classList.add("map-locate-loading");
@@ -449,20 +461,31 @@
           button.classList.remove("map-locate-loading");
           button.innerHTML = original;
         };
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            reportsMap.setView(
-              [position.coords.latitude, position.coords.longitude],
-              16,
-              { animate: true },
-            );
+
+        /* Instant jump when a recent fix is already cached. */
+        const cached = window.MadokGeo?.cached?.();
+        if (cached) {
+          reportsMap.setView([cached.lat, cached.lng], 16, { animate: true });
+          restore();
+          return;
+        }
+
+        const locate = window.MadokGeo?.locate;
+        if (typeof locate !== "function" || !navigator.geolocation) {
+          restore();
+          alert("আপনার বর্তমান লোকেশন পাওয়া যায়নি।");
+          return;
+        }
+
+        locate(
+          (lat, lng) => {
+            reportsMap.setView([lat, lng], 16, { animate: true });
             restore();
           },
           () => {
             restore();
             alert("আপনার বর্তমান লোকেশন পাওয়া যায়নি।");
           },
-          { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
         );
       }
       function openImage(path) {

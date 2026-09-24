@@ -13,6 +13,7 @@
   let selectedMapLocation = null;
   let searchTimer = null;
   let compressedImageFile = null;
+  let cachedPosition = null;
 
   const DEFAULT_CENTER = [23.8103, 90.4125];
   const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -52,10 +53,19 @@
                 </span>
               </label>
             </div>
+            <p id="reportTypeError"
+              data-validation-error
+              class="mt-1.5 hidden text-[11px] text-red-500"
+            ></p>
           </div>
           <div class="mb-5">
             <label for="reportTitle" class="mb-2 block text-xs md:text-sm font-bold text-slate-600">শিরোনাম <span class="text-red-500">*</span></label>
             <input id="reportTitle" name="title" type="text" maxlength="100" placeholder="যেমন: কলেজ মাঠের উত্তর কর্ণারে মাদক সেবন চলছে" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-xs outline-none focus:border-[#5b46e8] focus:ring-4 focus:ring-[#5b46e8]/10" />
+            <p
+  id="reportTitleError"
+  data-validation-error
+  class="mt-1.5 hidden text-[11px] text-red-500"
+></p>
           </div>
           <div class="mb-5">
             <label for="reportDescription" class="mb-2 block text-xs md:text-sm font-bold text-slate-600">সংক্ষিপ্ত বিবরণ</label>
@@ -76,6 +86,11 @@
             <div id="selectedLocation" class="mt-2 flex min-h-10 items-center gap-2 rounded-lg bg-slate-50 px-3 text-[12px] text-slate-500"><span>📍</span><span>আপনার বর্তমান লোকেশন ব্যবহার করুন অথবা ম্যাপ থেকে একটি স্থান নির্বাচন করুন।</span></div>
             <input type="hidden" id="latitude" name="latitude" required />
             <input type="hidden" id="longitude" name="longitude" required />
+            <p
+  id="reportLocationError"
+  data-validation-error
+  class="mt-1.5 hidden text-[11px] text-red-500"
+></p>
           </div>
           <div class="mb-5">
             <label class="mb-2 block text-xs md:text-sm font-bold text-slate-600">আপনি কি তাদের ধরিয়ে দিতে ইচ্ছুক?</label>
@@ -97,6 +112,11 @@
               <label for="contactInfo" class="mb-2 block text-xs md:text-sm font-bold text-slate-600">মোবাইল নম্বর অথবা ইমেইল</label>
               <input type="text" id="contactInfo" name="contactInfo" placeholder="01XXXXXXXXX অথবা example@email.com" class="w-full rounded-xl border border-slate-200 px-3 py-3 text-xs outline-none transition focus:border-[#5b46e8] focus:ring-4 focus:ring-[#5b46e8]/10" />
             </div>
+            <p
+  id="contactError"
+  data-validation-error
+  class="mt-1.5 hidden text-[11px] text-red-500"
+></p>
           </div>
           <div class="mb-3">
             <label class="mb-2 block text-xs md:text-sm font-bold text-slate-600">ছবি <span class="font-normal text-slate-400">(ঐচ্ছিক, সর্বোচ্চ ১টি)</span></label>
@@ -118,6 +138,7 @@
             <span class="text-[#5b46e8]">ⓘ</span>
             <p class="m-0 text-[12px] leading-4">শুধুমাত্র জনসাধারণের জন্য প্রাসঙ্গিক লোকেশন রিপোর্ট করুন। কোনো ব্যক্তির ব্যক্তিগত তথ্য প্রকাশ করবেন না।</p>
           </div>
+          <input type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" class="hidden" />
           <input type="hidden" name="csrf_token" id="csrfToken" />
           <div id="turnstileWidget" class="cf-turnstile mb-4 mt-4 hidden"></div>
           <p id="reportFormError" class="mt-3 text-sm text-red-600"></p>
@@ -181,6 +202,118 @@
       .replaceAll('"', '&quot;')
       .replaceAll("'", '&#039;');
 
+  /* =========================================================
+     FAST GEOLOCATION
+     First a cheap (network / cached) fix so the map jumps to the
+     user instantly, then a precise GPS refinement in background.
+     ========================================================= */
+
+  const GEO_FAST_OPTIONS = { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 };
+  const GEO_PRECISE_OPTIONS = { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 };
+  const GEO_CACHE_MS = 120000;
+
+  function readPosition(options) {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('Geolocation unsupported'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(resolve, reject, options);
+    });
+  }
+
+  function rememberPosition(lat, lng) {
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+    cachedPosition = { lat: latitude, lng: longitude, at: Date.now() };
+  }
+
+  function readCachedPosition() {
+    if (!cachedPosition) return null;
+    if (Date.now() - cachedPosition.at > GEO_CACHE_MS) return null;
+    return cachedPosition;
+  }
+
+  /* Warm the cache as soon as the report modal opens. */
+  function prewarmUserLocation() {
+    if (readCachedPosition()) return;
+    readPosition(GEO_FAST_OPTIONS)
+      .then((position) => rememberPosition(position.coords.latitude, position.coords.longitude))
+      .catch(() => {});
+  }
+
+  /**
+   * Fast current-location lookup.
+   * onUpdate(lat, lng, precise) is called as soon as any fix is available.
+   */
+  async function locateFast(onUpdate, onError) {
+    let resolved = false;
+    try {
+      const fast = await readPosition(GEO_FAST_OPTIONS);
+      resolved = true;
+      rememberPosition(fast.coords.latitude, fast.coords.longitude);
+      onUpdate?.(fast.coords.latitude, fast.coords.longitude, false);
+    } catch {
+      /* Fall through to the precise attempt below. */
+    }
+    try {
+      const precise = await readPosition(GEO_PRECISE_OPTIONS);
+      rememberPosition(precise.coords.latitude, precise.coords.longitude);
+      onUpdate?.(precise.coords.latitude, precise.coords.longitude, true);
+    } catch (error) {
+      if (!resolved) onError?.(error);
+    }
+  }
+
+  /* =========================================================
+     SHARED MAP POPUP
+     Identical markup to the home page map popup.
+     ========================================================= */
+
+  const popupTypeLabel = (type) =>
+    type === 'sale' ? 'মাদক বেচাকেনা' : type === 'use' ? 'মাদক সেবন' : 'উভয়';
+  const popupTypeBackground = (type) =>
+    type === 'sale' ? '#fee2e2' : type === 'use' ? '#fef3c7' : '#dcfce7';
+  const popupTypeTextColor = (type) =>
+    type === 'sale' ? '#b91c1c' : type === 'use' ? '#a16207' : '#15803d';
+
+  function buildLocationPopup(location, baseUrl = '') {
+    const stationText = location.station || 'থানা / উপজেলা নির্ধারণ করা হয়নি';
+    const reports = Number(location.reports);
+    const reportCount = Number.isFinite(reports) ? reports.toLocaleString('en-US') : '0';
+    const detailUrl = `${baseUrl}/reports/${encodeURIComponent(location.id)}`;
+
+    return `
+        <div style="min-width:210px;font-family:'Noto Sans Bengali',Arial,sans-serif;">
+            <div style="display:inline-block;padding:3px 7px;border-radius:5px;background:${popupTypeBackground(location.type)};color:${popupTypeTextColor(location.type)};font-size:10px;font-weight:700;margin-bottom:7px;">
+                ${escapeHtml(popupTypeLabel(location.type))}
+            </div>
+            <strong style="display:block;font-size:13px;line-height:1.5;">
+                ${escapeHtml(location.title)}
+            </strong>
+            <p style="margin:5px 0 0;color:#666;font-size:10px;line-height:1.5;">
+                ${escapeHtml(location.description || 'বিস্তারিত তথ্য দেওয়া হয়নি।')}
+            </p>
+            <span style="display:block;color:#777;font-size:10px;margin-top:5px;">
+                ${escapeHtml(stationText)} . ${escapeHtml(location.district || 'জেলা নির্ধারণ করা হয়নি')} . ${escapeHtml(location.division || 'বিভাগ নির্ধারণ করা হয়নি')}
+            </span>
+            <div style="margin-top:8px;padding-top:7px;border-top:1px solid #eee;color:#666;font-size:10px;">
+                মোট রিপোর্ট: <strong>${reportCount}</strong>
+                <a href="${detailUrl}" style="float:right;color:#5b46e8;font-weight:700;text-decoration:none;">সব রিপোর্ট দেখুন</a>
+            </div>
+        </div>
+    `;
+  }
+
+  /* Expose shared helpers so reports.html / location.html use one source of truth. */
+  window.MadokGeo = {
+    locate: locateFast,
+    warm: prewarmUserLocation,
+    cached: readCachedPosition,
+  };
+  window.MadokPopup = { buildLocationPopup };
+
   function setModalOpen(modal, open) {
     if (!modal) return;
     modal.classList.toggle('hidden', !open);
@@ -206,13 +339,19 @@
 
   function openReportModal(lat, lng) {
     const modal = document.getElementById('reportModal');
-    document.getElementById('reportFormError').textContent = '';
+    const formError = document.getElementById('reportFormError');
+    if (formError) formError.textContent = '';
+    clearReportTypeValidation();
+    clearValidationState(document.getElementById('reportTitle'), 'reportTitleError');
     if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) {
       const mapOption = document.querySelector('input[name="locationMethod"][value="map"]');
       if (mapOption) mapOption.checked = true;
       setSelectedLocation(lat, lng);
+      clearLocationValidation();
     }
     setModalOpen(modal, true);
+    /* Start the current-location lookup early so the map opens instantly. */
+    prewarmUserLocation();
   }
 
   function closeReportModal() {
@@ -226,11 +365,30 @@
     wrapper.classList.toggle('hidden', !yes?.checked);
   }
 
-  async function compressImageFile(file, maxDimension = 1600, quality = 0.75) {
+  const TARGET_IMAGE_BYTES = 300 * 1024;
+
+  function canvasToBlob(canvas, quality) {
+    return new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+  }
+
+  /**
+   * Compress + resize an image in the browser before upload.
+   * Converts to WebP and steps the quality down until the file is
+   * small enough, so big phone photos do not waste storage/bandwidth.
+   */
+  async function compressImageFile(file, maxDimension = 1600) {
     if (!file || !file.type.startsWith('image/')) return file;
-    if (file.size <= 350 * 1024) return file;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return file;
+    if (file.size <= 120 * 1024) return file;
+
+    let bitmap;
     try {
-      const bitmap = await createImageBitmap(file);
+      bitmap = await createImageBitmap(file);
+    } catch {
+      return file;
+    }
+
+    try {
       const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
       const width = Math.max(1, Math.round(bitmap.width * scale));
       const height = Math.max(1, Math.round(bitmap.height * scale));
@@ -238,18 +396,25 @@
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d', { alpha: true });
-      if (!ctx) {
-        bitmap.close?.();
-        return file;
-      }
+      if (!ctx) return file;
       ctx.drawImage(bitmap, 0, 0, width, height);
-      bitmap.close?.();
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', quality));
+
+      let quality = 0.78;
+      let blob = await canvasToBlob(canvas, quality);
+      while (blob && blob.size > TARGET_IMAGE_BYTES && quality > 0.4) {
+        quality -= 0.12;
+        const next = await canvasToBlob(canvas, quality);
+        if (!next || next.size >= blob.size) break;
+        blob = next;
+      }
+
       if (!blob || blob.size <= 0 || blob.size >= file.size) return file;
-      const baseName = String(file.name || 'report-image').replace(/\.[^.]+$/, '');
+      const baseName = String(file.name || 'report-image').replace(/\.[^.]+$/, '') || 'report-image';
       return new File([blob], `${baseName}.webp`, { type: 'image/webp', lastModified: Date.now() });
     } catch {
       return file;
+    } finally {
+      bitmap.close?.();
     }
   }
 
@@ -327,14 +492,31 @@
   }
 
   function getUserLocationForPicker() {
-    if (!navigator.geolocation || !locationPickerMap) {
-      locationPickerMap?.setView(DEFAULT_CENTER, 13);
+    if (!locationPickerMap) return;
+
+    /* Instant centring when a recent fix is already cached. */
+    const cached = readCachedPosition();
+    if (cached) {
+      locationPickerMap.invalidateSize();
+      selectMapLocation(cached.lat, cached.lng);
+    }
+
+    if (!navigator.geolocation) {
+      if (!cached) locationPickerMap.setView(DEFAULT_CENTER, 13);
       return;
     }
-    navigator.geolocation.getCurrentPosition(
-      (position) => selectMapLocation(position.coords.latitude, position.coords.longitude),
-      () => locationPickerMap.setView(DEFAULT_CENTER, 13),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
+
+    locateFast(
+      (lat, lng) => {
+        locationPickerMap?.invalidateSize();
+        selectMapLocation(lat, lng);
+      },
+      () => {
+        if (cached) return;
+        locationPickerMap?.setView(DEFAULT_CENTER, 13);
+        const coords = document.getElementById('pickerCoordinates');
+        if (coords) coords.textContent = 'বর্তমান লোকেশন পাওয়া যায়নি। ম্যাপে ক্লিক করে নির্বাচন করুন।';
+      },
     );
   }
 
@@ -343,14 +525,19 @@
     if (mapOption) mapOption.checked = true;
     setModalOpen(document.getElementById('mapSelectModal'), true);
     initLocationPickerMap();
-    setTimeout(() => {
-      locationPickerMap?.invalidateSize();
-      if (selectedMapLocation) {
-        locationPickerMap.setView([selectedMapLocation.lat, selectedMapLocation.lng], 16);
-      } else {
-        getUserLocationForPicker();
-      }
-    }, 200);
+
+    /* Already-selected location: just show it, no lookup needed. */
+    if (selectedMapLocation) {
+      requestAnimationFrame(() => {
+        locationPickerMap?.invalidateSize();
+        locationPickerMap?.setView([selectedMapLocation.lat, selectedMapLocation.lng], 16);
+      });
+      return;
+    }
+
+    /* Start geolocation immediately instead of waiting for the modal animation. */
+    getUserLocationForPicker();
+    setTimeout(() => locationPickerMap?.invalidateSize(), 150);
   }
 
   function closeLocationPicker() {
@@ -376,16 +563,15 @@
       button.classList.remove('opacity-70');
       button.innerHTML = original;
     };
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        selectMapLocation(position.coords.latitude, position.coords.longitude);
+    locateFast(
+      (lat, lng) => {
+        selectMapLocation(lat, lng);
         restore();
       },
       () => {
         restore();
         document.getElementById('reportFormError').textContent = 'আপনার বর্তমান লোকেশন পাওয়া যায়নি।';
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
     );
   }
 
@@ -396,13 +582,18 @@
       document.getElementById('reportFormError').textContent = 'Browser geolocation support করে না।';
       return;
     }
-    document.getElementById('selectedLocation').innerHTML = '<span>📍</span><span>লোকেশন লোড হচ্ছে...</span>';
-    navigator.geolocation.getCurrentPosition(
-      (position) => setSelectedLocation(position.coords.latitude, position.coords.longitude, 'আপনার বর্তমান লোকেশন'),
+    const cached = readCachedPosition();
+    if (cached) {
+      setSelectedLocation(cached.lat, cached.lng, 'আপনার বর্তমান লোকেশন');
+    } else {
+      document.getElementById('selectedLocation').innerHTML = '<span>📍</span><span>লোকেশন লোড হচ্ছে...</span>';
+    }
+    locateFast(
+      (lat, lng) => setSelectedLocation(lat, lng, 'আপনার বর্তমান লোকেশন'),
       () => {
+        if (cached) return;
         document.getElementById('selectedLocation').innerHTML = '<span>📍</span><span>লোকেশন পাওয়া যায়নি। ম্যাপ থেকে নির্বাচন করুন।</span>';
       },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
     );
   }
 
@@ -491,60 +682,507 @@
     });
   }
 
-  async function submit(event) {
-    event.preventDefault();
-    const form = event.currentTarget;
-    const error = document.getElementById('reportFormError');
-    const button = document.getElementById('submitReportBtn');
-    const title = form.title.value.trim();
-    const lat = form.latitude.value;
-    const lng = form.longitude.value;
-    if (!form.reportType.value || !title || !lat || !lng) {
-      error.textContent = 'রিপোর্টের ধরন, শিরোনাম এবং লোকেশন দিন।';
-      return;
+  function setValidationState(field, errorId, message) {
+  const errorElement = document.getElementById(errorId);
+
+  if (errorElement) {
+    errorElement.textContent = message;
+    errorElement.classList.remove("hidden");
+  }
+
+  if (field) {
+    field.classList.remove("border-slate-200");
+    field.classList.add("border-red-500");
+  }
+}
+
+function clearValidationState(field, errorId) {
+  const errorElement = document.getElementById(errorId);
+
+  if (errorElement) {
+    errorElement.textContent = "";
+    errorElement.classList.add("hidden");
+  }
+
+  if (field) {
+    field.classList.remove("border-red-500");
+    field.classList.add("border-slate-200");
+  }
+}
+
+function getReportTypeCards() {
+  return Array.from(
+    document.querySelectorAll('input[name="reportType"]')
+  )
+    .map((input) => input.nextElementSibling)
+    .filter(Boolean);
+}
+
+function getLocationMethodCards() {
+  return [
+    document.querySelector("#getLocationBtn > span"),
+    document.querySelector("#openMapSelectBtn > span"),
+  ].filter(Boolean);
+}
+
+function getContactCards() {
+  return [
+    document.querySelector("#contactYes + span"),
+    document.querySelector("#contactNo + span"),
+  ].filter(Boolean);
+}
+
+function clearReportTypeValidation() {
+  const error = document.getElementById("reportTypeError");
+
+  if (error) {
+    error.textContent = "";
+    error.classList.add("hidden");
+  }
+
+  getReportTypeCards().forEach((card) => {
+    card.classList.remove("border-red-500");
+    card.classList.add("border-slate-200");
+  });
+}
+
+function clearLocationValidation() {
+  const error = document.getElementById("reportLocationError");
+
+  if (error) {
+    error.textContent = "";
+    error.classList.add("hidden");
+  }
+
+  getLocationMethodCards().forEach((card) => {
+    card.classList.remove("border-red-500");
+    card.classList.add("border-slate-200");
+  });
+}
+
+function clearContactValidation() {
+  const error = document.getElementById("contactError");
+
+  if (error) {
+    error.textContent = "";
+    error.classList.add("hidden");
+  }
+
+  getContactCards().forEach((card) => {
+    card.classList.remove("border-red-500");
+    card.classList.add("border-slate-200");
+  });
+}
+
+  function resetTurnstileWidget() {
+    if (turnstileWidgetId !== null && window.turnstile) {
+      turnstileToken = "";
+      window.turnstile.reset(turnstileWidgetId);
     }
-    if (form.willingToContact.value === 'yes' && !form.contactInfo.value.trim()) {
-      error.textContent = 'যোগাযোগের তথ্য প্রয়োজন।';
+  }
+
+  function clearAllValidation() {
+    clearReportTypeValidation();
+    clearLocationValidation();
+    clearContactValidation();
+    clearValidationState(document.getElementById("reportTitle"), "reportTitleError");
+    const formError = document.getElementById("reportFormError");
+    if (formError) formError.textContent = "";
+  }
+
+  /* Same reset behaviour as the home page form. */
+  function resetFormState() {
+    document.getElementById("reportForm")?.reset();
+
+    clearImagePreview();
+
+    const latitude = document.getElementById("latitude");
+    const longitude = document.getElementById("longitude");
+    if (latitude) latitude.value = "";
+    if (longitude) longitude.value = "";
+
+    selectedMapLocation = null;
+
+    if (locationPickerMarker && locationPickerMap) {
+      try {
+        locationPickerMap.removeLayer(locationPickerMarker);
+      } catch {}
+      locationPickerMarker = null;
+    }
+
+    const box = document.getElementById("selectedLocation");
+    if (box) {
+      box.innerHTML =
+        "<span>📍</span><span>আপনার বর্তমান লোকেশন ব্যবহার করুন অথবা ম্যাপ থেকে একটি স্থান নির্বাচন করুন।</span>";
+    }
+
+    const wrapper = document.getElementById("contactInputWrapper");
+    if (wrapper) wrapper.classList.add("hidden");
+
+    const coords = document.getElementById("pickerCoordinates");
+    if (coords) coords.textContent = "এখনো কোনো লোকেশন নির্বাচন করা হয়নি";
+
+    const confirmBtn = document.getElementById("confirmMapLocationBtn");
+    if (confirmBtn) confirmBtn.disabled = true;
+
+    clearAllValidation();
+  }
+
+  async function submit(event) {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+  const error = document.getElementById("reportFormError");
+  const button = document.getElementById("submitReportBtn");
+
+  const titleInput = document.getElementById("reportTitle");
+
+  const title = titleInput?.value.trim() || "";
+
+  const reportType = document.querySelector(
+    'input[name="reportType"]:checked'
+  );
+
+  const locationMethod = document.querySelector(
+    'input[name="locationMethod"]:checked'
+  );
+
+  const willingToContactChoice = document.querySelector(
+    'input[name="willingToContact"]:checked'
+  );
+
+  let firstInvalidField = null;
+
+  /*
+   * Report type
+   */
+  if (!reportType) {
+    getReportTypeCards().forEach((card) => {
+      card.classList.remove("border-slate-200");
+      card.classList.add("border-red-500");
+    });
+
+    setValidationState(
+      null,
+      "reportTypeError",
+      "দয়া করে রিপোর্টের ধরন সিলেক্ট করুন।"
+    );
+
+    firstInvalidField =
+      firstInvalidField ||
+      document.querySelector('input[name="reportType"]');
+  } else {
+    clearReportTypeValidation();
+  }
+
+  /*
+   * Title
+   */
+  if (!title) {
+    setValidationState(
+      titleInput,
+      "reportTitleError",
+      "দয়া করে রিপোর্টের শিরোনাম লিখুন।"
+    );
+
+    firstInvalidField = firstInvalidField || titleInput;
+  } else {
+    clearValidationState(
+      titleInput,
+      "reportTitleError"
+    );
+  }
+
+  /*
+   * Location
+   */
+  if (!locationMethod) {
+    getLocationMethodCards().forEach((card) => {
+      card.classList.remove("border-slate-200");
+      card.classList.add("border-red-500");
+    });
+
+    setValidationState(
+      null,
+      "reportLocationError",
+      "দয়া করে রিপোর্টের লোকেশন সিলেক্ট করুন।"
+    );
+
+    firstInvalidField =
+      firstInvalidField ||
+      document.querySelector(
+        'input[name="locationMethod"]'
+      );
+  } else {
+    clearLocationValidation();
+  }
+
+  /*
+   * Contact choice
+   */
+  if (!willingToContactChoice) {
+    getContactCards().forEach((card) => {
+      card.classList.remove("border-slate-200");
+      card.classList.add("border-red-500");
+    });
+
+    setValidationState(
+      null,
+      "contactError",
+      "দয়া করে একটি অপশন সিলেক্ট করুন।"
+    );
+
+    firstInvalidField =
+      firstInvalidField ||
+      document.querySelector(
+        'input[name="willingToContact"]'
+      );
+  } else {
+    clearContactValidation();
+  }
+
+  /*
+   * Scroll to first invalid field
+   */
+  if (firstInvalidField) {
+    firstInvalidField.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    firstInvalidField.focus({
+      preventScroll: true,
+    });
+
+    return;
+  }
+
+  /*
+   * Coordinates
+   */
+  const lat =
+    document.getElementById("latitude")?.value || "";
+
+  const lng =
+    document.getElementById("longitude")?.value || "";
+
+  if (!lat || !lng) {
+    getLocationMethodCards().forEach((card) => {
+      card.classList.remove("border-slate-200");
+      card.classList.add("border-red-500");
+    });
+
+    setValidationState(
+      null,
+      "reportLocationError",
+      "দয়া করে রিপোর্টের লোকেশন নির্বাচন করুন।"
+    );
+
+    document
+      .getElementById("selectReportLocation")
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+    return;
+  }
+
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    setValidationState(
+      null,
+      "reportLocationError",
+      "সঠিক লোকেশন নির্বাচন করুন।"
+    );
+
+    document
+      .getElementById("selectReportLocation")
+      ?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+
+    return;
+  }
+
+  /*
+   * Contact information
+   */
+  const contactChoice =
+    document.querySelector(
+      'input[name="willingToContact"]:checked'
+    )?.value || "";
+
+  const contactInput =
+    document.getElementById("contactInfo");
+
+  if (
+    contactChoice === "yes" &&
+    !contactInput?.value.trim()
+  ) {
+    setValidationState(
+      contactInput,
+      "contactError",
+      "যোগাযোগের তথ্য দিন।"
+    );
+
+    contactInput?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+
+    contactInput?.focus();
+
+    return;
+  }
+
+  /*
+   * Image (optional) validation - same rules as the home page.
+   */
+  const imageFile = form.image?.files?.[0] || null;
+
+  if (imageFile) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(imageFile.type)) {
+      setValidationState(
+        null,
+        "reportFormError",
+        "শুধু JPG, PNG অথবা WebP ছবি নির্বাচন করুন।"
+      );
+
       return;
     }
 
-    button.disabled = true;
-    button.textContent = 'রিপোর্ট পাঠানো হচ্ছে...';
-    try {
-      await securityReady;
-      const widget = document.getElementById('turnstileWidget');
-      if (widget && !widget.classList.contains('hidden') && !turnstileToken) {
-        throw new Error('Security verification এখনো সম্পন্ন হয়নি। একটু পরে আবার চেষ্টা করুন।');
-      }
-      const data = new FormData(form);
-      if (csrfToken) data.set('csrf_token', csrfToken);
-      if (turnstileToken) data.set('cf-turnstile-response', turnstileToken);
-      if (compressedImageFile) {
-        data.set('image', compressedImageFile, compressedImageFile.name);
-      } else if (form.image.files[0]) {
-        const compressed = await compressImageFile(form.image.files[0]);
-        data.set('image', compressed, compressed.name);
-      }
-      const response = await fetch(`${appBase}/api/report.php`, {
-        method: 'POST',
-        body: data,
-        headers: { Accept: 'application/json' },
-        cache: 'no-store',
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.message || 'রিপোর্ট save করা যায়নি।');
-      closeReportModal();
-      window.location.reload();
-    } catch (submitError) {
-      error.textContent = submitError.message;
-      button.disabled = false;
-      button.textContent = 'রিপোর্ট জমা দিন';
-      if (turnstileWidgetId !== null && window.turnstile) {
-        turnstileToken = '';
-        window.turnstile.reset(turnstileWidgetId);
-      }
+    if (imageFile.size > MAX_IMAGE_SIZE) {
+      setValidationState(
+        null,
+        "reportFormError",
+        "ছবির সর্বোচ্চ size 5MB।"
+      );
+
+      return;
     }
   }
+
+  /*
+   * Existing submission code continues below.
+   */
+
+  button.disabled = true;
+  button.textContent = "রিপোর্ট পাঠানো হচ্ছে...";
+
+  try {
+    await securityReady;
+
+    const widget =
+      document.getElementById("turnstileWidget");
+
+    if (
+      widget &&
+      !widget.classList.contains("hidden") &&
+      !turnstileToken
+    ) {
+      throw new Error(
+        "Security verification এখনো সম্পন্ন হয়নি। একটু পরে আবার চেষ্টা করুন।"
+      );
+    }
+
+    const data = new FormData(form);
+
+    if (csrfToken) {
+      data.set("csrf_token", csrfToken);
+    }
+
+    if (turnstileToken) {
+      data.set(
+        "cf-turnstile-response",
+        turnstileToken
+      );
+    }
+
+    if (compressedImageFile) {
+      data.set(
+        "image",
+        compressedImageFile,
+        compressedImageFile.name
+      );
+    } else if (form.image.files[0]) {
+      const compressed =
+        await compressImageFile(
+          form.image.files[0]
+        );
+
+      data.set(
+        "image",
+        compressed,
+        compressed.name
+      );
+    }
+
+    const response = await fetch(
+      `${appBase}/api/report.php`,
+      {
+        method: "POST",
+        body: data,
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      throw new Error(
+        result.message ||
+        "রিপোর্ট save করা যায়নি।"
+      );
+    }
+
+    /*
+     * Same behaviour as the home page: close the modal and send the
+     * user to the report that was just submitted.
+     */
+    closeReportModal();
+
+    const newLocationId = result.location_id ?? result.locationId;
+
+    if (newLocationId) {
+      resetFormState();
+
+      window.location.href =
+        `${appBase}/reports/${encodeURIComponent(newLocationId)}`;
+
+      return;
+    }
+
+    /* Honeypot / silently ignored submission: stay on the page. */
+    resetTurnstileWidget();
+    button.disabled = false;
+    button.textContent = "রিপোর্ট জমা দিন";
+
+  } catch (submitError) {
+    error.textContent =
+      submitError.message ||
+      "রিপোর্ট পাঠানো যায়নি।";
+
+    button.disabled = false;
+    button.textContent =
+      "রিপোর্ট জমা দিন";
+
+    resetTurnstileWidget();
+  }
+}
 
   function bindUi() {
     document.getElementById('closeReportBtn')?.addEventListener('click', closeReportModal);
@@ -601,6 +1239,69 @@
         event.preventDefault();
         openReportModal();
       });
+    });
+
+    document.getElementById("reportForm")?.addEventListener("input", (event) => {
+    if (event.target.id === "reportTitle") {
+      clearValidationState(
+        event.target,
+        "reportTitleError"
+      );
+    }
+
+    if (event.target.id === "contactInfo") {
+      clearValidationState(
+        event.target,
+        "contactError"
+      );
+    }
+  });
+
+document
+  .getElementById("reportForm")
+  ?.addEventListener("change", (event) => {
+    if (
+      event.target.name === "reportType"
+    ) {
+      clearReportTypeValidation();
+    }
+
+    if (
+      event.target.name === "locationMethod"
+    ) {
+      clearLocationValidation();
+    }
+
+    if (
+      event.target.name ===
+      "willingToContact"
+    ) {
+      clearContactValidation();
+    }
+  });
+
+    /* Same as the home page: clicking a location option clears the error. */
+    document.getElementById("reportForm")?.addEventListener("click", (event) => {
+      if (event.target.closest("#getLocationBtn, #openMapSelectBtn")) {
+        clearLocationValidation();
+      }
+    });
+
+    /* Escape closes the open modal. */
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+
+      const reportModal = document.getElementById("reportModal");
+      const mapSelectModal = document.getElementById("mapSelectModal");
+
+      if (mapSelectModal && !mapSelectModal.classList.contains("hidden")) {
+        closeLocationPicker();
+        return;
+      }
+
+      if (reportModal && !reportModal.classList.contains("hidden")) {
+        closeReportModal();
+      }
     });
   }
 

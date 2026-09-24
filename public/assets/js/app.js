@@ -2746,9 +2746,11 @@ function renderStationTable(
                         </td>
 
                         <td>
-                            ${item.district_slug
-                                ? `<a href="location.html?type=district&slug=${encodeURIComponent(item.district_slug)}" class="font-semibold text-primary no-underline hover:underline">${escapeHtml(item.district || "")}</a>`
-                                : escapeHtml(item.district || "")}
+                            ${item.division_slug && item.district_slug
+                                ? `<a href="location.html?type=district&slug=${encodeURIComponent(item.division_slug + "/" + item.district_slug)}" class="font-semibold text-primary no-underline hover:underline">${escapeHtml(item.district || "")}</a>`
+                                : (item.district_slug
+                                    ? `<a href="location.html?type=district&slug=${encodeURIComponent(item.district_slug)}" class="font-semibold text-primary no-underline hover:underline">${escapeHtml(item.district || "")}</a>`
+                                    : escapeHtml(item.district || ""))}
                         </td>
 
                         <td>

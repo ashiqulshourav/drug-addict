@@ -549,8 +549,5 @@ try {
         'message' =>
             'Statistics data load করা যায়নি।',
 
-        'debug' =>
-            $e->getMessage()
-
     ], 500);
 }

@@ -266,8 +266,8 @@ function store_compressed_report_image(array $file, string $relativeDir = 'uploa
 
     $width = (int) ($info[0] ?? 0);
     $height = (int) ($info[1] ?? 0);
-    if ($width < 1 || $height < 1 || $width > 8000 || $height > 8000) {
-        throw new RuntimeException('ছবির dimension সর্বোচ্চ 8000x8000 হতে পারে।');
+    if ($width < 1 || $height < 1 || $width > 5000 || $height > 5000 || ($width * $height) > 12000000) {
+        throw new RuntimeException('ছবির dimension সর্বোচ্চ 5000x5000 হতে পারে।');
     }
 
     $allowedMime = [

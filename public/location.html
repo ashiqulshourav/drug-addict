@@ -3,15 +3,21 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="নির্দিষ্ট এলাকা, থানা বা জেলার মাদক সংক্রান্ত স্পট ও পরিসংখ্যান বিবরণী।" />
+    <meta
+      name="description"
+      content="নির্দিষ্ট এলাকা, থানা বা জেলার মাদক সংক্রান্ত স্পট ও পরিসংখ্যান বিবরণী।"
+    />
     <meta name="robots" content="index, follow" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="লোকেশন বিবরণী - মাদক" />
-    <meta property="og:description" content="নির্দিষ্ট এলাকা, থানা বা জেলার মাদক সংক্রান্ত স্পট ও পরিসংখ্যান বিবরণী।" />
+    <meta
+      property="og:description"
+      content="নির্দিষ্ট এলাকা, থানা বা জেলার মাদক সংক্রান্ত স্পট ও পরিসংখ্যান বিবরণী।"
+    />
     <meta property="og:locale" content="bn_BD" />
     <meta name="twitter:card" content="summary" />
     <title>লোকেশন - মাদক</title>
-    <link rel="stylesheet" href="./assets/css/app.css" />
+    <link rel="stylesheet" href="./assets/css/app.css?v=1.0.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -74,10 +80,7 @@
           ><strong class="text-2xl text-[#951d1f]">মাদক</strong></a
         >
         <div class="flex items-center gap-3 md:gap-4">
-          <div
-            id="globalSearchArea"
-            class="relative w-full md:w-64"
-          >
+          <div id="globalSearchArea" class="relative w-full md:w-64">
             <button
               id="globalSearchToggle"
               type="button"
@@ -338,13 +341,10 @@
             return;
           }
 
-          locate(
-            (lat, lng) => {
-              map.setView([lat, lng], 16, { animate: true });
-              restore();
-            },
-            restore,
-          );
+          locate((lat, lng) => {
+            map.setView([lat, lng], 16, { animate: true });
+            restore();
+          }, restore);
         };
         load().catch((e) => (error.textContent = e.message));
       })();

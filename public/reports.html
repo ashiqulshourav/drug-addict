@@ -578,7 +578,7 @@
         if (!report) return;
         const section = document.getElementById("reportVerification");
         if (!section) return;
-        section.innerHTML = `<p class="text-sm font-bold">এই রিপোর্টগুলো সত্য</p><div class="mt-2 flex flex-wrap items-center gap-2"><button data-vote="yes" data-report="${report.id}" ${report.voted ? "disabled" : ""} class="rounded-lg bg-green-50 px-3 py-2 text-xs font-bold text-green-700 disabled:cursor-not-allowed disabled:opacity-60">হ্যাঁ (${report.yes || 0})</button><button data-vote="no" data-report="${report.id}" ${report.voted ? "disabled" : ""} class="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 disabled:cursor-not-allowed disabled:opacity-60">না (${report.no || 0})</button>${report.voted ? '<span class="text-xs text-slate-500">আপনি ভোট দিয়েছেন</span>' : ""}</div>`;
+        section.innerHTML = `<p class="text-sm font-bold">এই রিপোর্টগুলো শতভাগ সত্য?</p><div class="mt-2 flex flex-wrap items-center gap-2 justify-center"><button data-vote="yes" data-report="${report.id}" ${report.voted ? "disabled" : ""} class="rounded-lg bg-green-50 px-3 py-2 text-xs font-bold text-green-700 disabled:cursor-not-allowed disabled:opacity-60">হ্যাঁ (${report.yes || 0})</button><button data-vote="no" data-report="${report.id}" ${report.voted ? "disabled" : ""} class="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 disabled:cursor-not-allowed disabled:opacity-60">না (${report.no || 0})</button>${report.voted ? '<span class="text-xs text-slate-500">আপনি ভোট দিয়েছেন</span>' : ""}</div>`;
         section
           .querySelectorAll("[data-vote]")
           .forEach((button) =>

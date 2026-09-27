@@ -47,7 +47,7 @@
 
     <title>Madok — Community Location Reports</title>
 
-    <link rel="stylesheet" href="./assets/css/app.css?v=1.0.0" />
+    <link rel="stylesheet" href="./assets/css/app.css?v=1.0.1" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -1179,12 +1179,126 @@
       </div>
     </div>
 
+    <!-- Announcement Modal -->
+    <div
+      id="announcementModal"
+      class="fixed inset-0 z-[2500] hidden items-center justify-center bg-black/60 px-4 py-6 backdrop-blur-sm"
+      aria-hidden="true"
+    >
+      <div
+        id="announcementDialog"
+        class="relative flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="announcementTitle"
+      >
+        <!-- Header -->
+        <div
+          class="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-6"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-xl"
+            >
+              📢
+            </div>
+
+            <h2
+              id="announcementTitle"
+              class="text-lg font-bold text-gray-900 sm:text-xl"
+            >
+              গুরুত্বপূর্ণ ঘোষণা
+            </h2>
+          </div>
+
+          <!-- Top Close -->
+          <button
+            type="button"
+            id="announcementClose"
+            class="flex h-9 w-9 items-center justify-center rounded-full text-2xl leading-none text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            aria-label="ঘোষণা বন্ধ করুন"
+          >
+            &times;
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
+          <h3
+            class="mb-4 text-xl font-bold leading-relaxed text-gray-900 sm:text-2xl"
+          >
+            মাদককে না বলুন, মাদক নির্মূলে সহযোগিতা করুন।
+          </h3>
+
+          <div class="space-y-4 text-sm leading-7 text-gray-600 sm:text-base">
+            <p>
+              আমাদের এই ওয়েবসাইটের মাধ্যমে দেশের যেকোনো এলাকার মাদক
+              <strong class="font-semibold text-gray-800"
+                >সেবন বা বিক্রয় সংক্রান্ত তথ্য</strong
+              >
+              রিপোর্ট করা যায়। রিপোর্ট করা স্থানগুলো পরবর্তীতে ম্যাপে দেখা যাবে,
+              যাতে সাধারণ মানুষ নিজ নিজ এলাকার মাদকসংক্রান্ত পরিস্থিতি সম্পর্কে
+              সচেতন হতে পারেন।
+            </p>
+
+            <div
+              class="rounded-xl border border-indigo-100 bg-indigo-50 p-4 sm:p-5"
+            >
+              <h4 class="mb-2 font-bold text-gray-900">
+                আপনার গোপনীয়তা আমাদের কাছে গুরুত্বপূর্ণ
+              </h4>
+
+              <p class="text-gray-700">
+                রিপোর্ট প্রদানকারীর পরিচয় বা ব্যক্তিগত তথ্য ওয়েবসাইটে প্রকাশ করা
+                হয় না এবং অন্য কারও কাছে দেওয়া হয় না। আমরা রিপোর্টের প্রয়োজনীয়
+                তথ্য সংরক্ষণ করি, যাতে মাদকসংক্রান্ত স্থানগুলো চিহ্নিত ও
+                প্রদর্শন করা যায়।
+              </p>
+            </div>
+
+            <p>
+              আপনার পরিচিত কোনো স্থানে মাদক বিক্রয় বা মাদক সেবন হয়ে থাকে বলে
+              আপনি জানলে, দায়িত্বশীলভাবে সেই স্থানটি আমাদের ওয়েবসাইটে রিপোর্ট
+              করতে পারেন।
+            </p>
+
+            <p>
+              আমাদের উদ্দেশ্য হলো—আপনার ও আমার আশেপাশে কোথায় মাদক সেবন বা
+              ক্রয়-বিক্রয় হচ্ছে সে বিষয়ে মানুষকে সচেতন করা। সচেতনতার মাধ্যমে
+              স্থানীয় মানুষ ও সংশ্লিষ্ট কর্তৃপক্ষ প্রয়োজনীয় উদ্যোগ নিতে পারেন
+              এবং মাদকবিরোধী কার্যক্রম আরও কার্যকর হতে পারে।
+            </p>
+
+            <div class="border-t border-gray-100 pt-4">
+              <p class="font-semibold leading-7 text-gray-900">
+                আসুন, মাদকের বিরুদ্ধে সচেতন হই। মাদকের স্থানগুলো ম্যাপে রিপোর্ট
+                করুন এবং মাদক নির্মূলে সহযোগিতা করুন।
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div
+          class="shrink-0 border-t border-gray-100 bg-gray-50 px-5 py-4 sm:px-6"
+        >
+          <button
+            type="button"
+            id="announcementCloseBottom"
+            class="w-full rounded-xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+          >
+            বুঝেছি, বন্ধ করুন
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin=""
     ></script>
     <script src="./assets/js/search.js?v=1.0.1"></script>
-    <script src="./assets/js/app.js?v=2.2.0"></script>
+    <script src="./assets/js/app.js?v=2.2.1"></script>
     <script src="./assets/js/visitor.js?v=1.0.0"></script>
   </body>
 </html>

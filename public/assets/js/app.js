@@ -137,6 +137,72 @@ let stationDistrict = "all";
 let stationTableExpanded = false;
 
 
+
+
+
+// Announcement Modal 
+document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("announcementModal");
+    const dialog = document.getElementById("announcementDialog");
+    const closeButton = document.getElementById("announcementClose");
+    const closeBottomButton = document.getElementById("announcementCloseBottom");
+
+    if (!modal || !dialog) return;
+
+    const closeAnnouncement = () => {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+        modal.setAttribute("aria-hidden", "true");
+
+        document.body.classList.remove("overflow-hidden");
+    };
+
+    const openAnnouncement = () => {
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+        modal.setAttribute("aria-hidden", "false");
+
+        document.body.classList.add("overflow-hidden");
+
+        closeButton?.focus();
+    };
+
+    closeButton?.addEventListener("click", closeAnnouncement);
+    closeBottomButton?.addEventListener("click", closeAnnouncement);
+
+    // Close when clicking outside the dialog
+    modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+            closeAnnouncement();
+        }
+    });
+
+    // Close with Escape key
+    document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !modal.classList.contains("hidden")) {
+            closeAnnouncement();
+        }
+    });
+
+    // // Show announcement when website loads
+    // openAnnouncement();
+
+    const ANNOUNCEMENT_KEY = "madok_announcement_seen";
+
+    if (!localStorage.getItem(ANNOUNCEMENT_KEY)) {
+        openAnnouncement();
+    }
+
+    const markAsSeenAndClose = () => {
+        localStorage.setItem(ANNOUNCEMENT_KEY, "1");
+        closeAnnouncement();
+    };
+
+    closeButton?.addEventListener("click", markAsSeenAndClose);
+    closeBottomButton?.addEventListener("click", markAsSeenAndClose);
+});
+
+
 /* =========================================================
    DOM CACHE
    ========================================================= */
@@ -4287,3 +4353,5 @@ document.addEventListener(
     "DOMContentLoaded",
     initMadok
 );
+
+

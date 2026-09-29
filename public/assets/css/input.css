@@ -94,6 +94,11 @@ body {
     top: 8px;
     z-index: 1200;
     display: block;
+    /* The area carries w-full (width: 100%); together with the 12px insets that
+       made it 12px wider than the viewport and added a horizontal scrollbar.
+       Let the insets drive the width so the box always stays inside the header. */
+    width: auto;
+    max-width: calc(100% - 24px);
   }
   #globalSearchArea.search-open > #globalSearchToggle {
     display: none;

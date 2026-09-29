@@ -17,9 +17,7 @@
     <meta property="og:locale" content="bn_BD" />
     <meta name="twitter:card" content="summary" />
     <title>Madok - সব রিপোর্ট</title>
-    <link rel="stylesheet" href="../assets/css/app.css?v=1.0.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="../assets/css/app.css?v=1.0.3" />
     <link
       href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
@@ -232,7 +230,7 @@
       </section>
     </main>
 
-    <footer class="bg-[#121625] py-7 text-white">
+    <footer class="bg-[#121625] py-7 pb-12 text-white">
       <div
         class="mx-auto flex w-[min(1180px,calc(100%-32px))] flex-col items-start justify-between gap-3 md:flex-row md:items-center"
       >
@@ -349,7 +347,7 @@
       src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
       crossorigin=""
     ></script>
-    <script src="../assets/js/search.js?v=1.0.1"></script>
+    <script src="../assets/js/search.js?v=1.0.2"></script>
     <script src="../assets/js/report-form.js?v=2.2.0"></script>
     <script src="../assets/js/visitor.js?v=1.0.0"></script>
     <script>
@@ -666,7 +664,7 @@
           drawMarkers();
         }
         reports = result.reports;
-        summary.innerHTML = `<div class="flex flex-col justify-between gap-5 border-b border-slate-200 pb-5 md:flex-row"><div><p class="mb-2 text-[12px] font-extrabold tracking-[1.5px] text-[#5b46e8]">ALL REPORTS</p><h1 class="m-0 text-3xl font-extrabold">এই লোকেশনের সব রিপোর্ট</h1><p class="mt-2 text-sm text-slate-500">${escapeHtml(place.upazila || place.station || "লোকেশন")} . ${escapeHtml(place.district || "")} . ${escapeHtml(place.division || "")}</p><p class="mt-2 text-sm font-bold text-red-500">মোট রিপোর্ট: ${Number(place.total).toLocaleString("en-US")}</p></div><div id="reportVerification" class="shrink-0 md:text-right"></div></div>`;
+        summary.innerHTML = `<div class="flex flex-col justify-between gap-5 border-b border-slate-200 pb-5 md:flex-row"><div><h1 class="m-0 text-3xl font-extrabold">এই লোকেশনের সব রিপোর্ট</h1><p class="mt-2 text-sm text-slate-500">${escapeHtml(place.upazila || place.station || "লোকেশন")} . ${escapeHtml(place.district || "")} . ${escapeHtml(place.division || "")}</p><p class="mt-2 text-sm font-bold text-red-500">মোট রিপোর্ট: ${Number(place.total).toLocaleString("en-US")}</p></div><div id="reportVerification" class="shrink-0 md:text-right text-center"></div></div>`;
         renderVerification();
         renderReports();
       }

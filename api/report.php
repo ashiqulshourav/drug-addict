@@ -216,7 +216,7 @@ $upazilaId =
 $hash = ip_hash();
 $rate = $pdo->prepare(
     "SELECT COUNT(*) FROM reports
-     WHERE ip_hash = ? AND created_at >= (NOW() - INTERVAL 1 HOUR)"
+     WHERE ip_hash = ? AND deleted_at IS NULL AND created_at >= (NOW() - INTERVAL 1 HOUR)"
 );
 $rate->execute([$hash]);
 if ((int)$rate->fetchColumn() >= 20) {
@@ -368,7 +368,8 @@ try {
     $sql = "
         SELECT id, latitude, longitude, type, report_count, use_count, sale_count
         FROM locations
-        WHERE latitude BETWEEN ? AND ?
+                WHERE deleted_at IS NULL
+                    AND latitude BETWEEN ? AND ?
           AND longitude BETWEEN ? AND ?
           AND (
             6371000 * 2 * ASIN(
@@ -402,19 +403,20 @@ try {
 
     if ($location) {
         $sameLocation = $pdo->prepare(
-            'SELECT COUNT(*) FROM reports WHERE ip_hash = ? AND location_id = ? AND created_at >= (NOW() - INTERVAL 1 HOUR)'
+            'SELECT COUNT(*) FROM reports WHERE ip_hash = ? AND location_id = ? AND deleted_at IS NULL AND created_at >= (NOW() - INTERVAL 1 HOUR)'
         );
         $sameLocation->execute([$hash, (int) $location['id']]);
         if ((int) $sameLocation->fetchColumn() >= max(1, (int) env_value('REPORT_SAME_LOCATION_MAX_REQUESTS', '3'))) {
             $pdo->rollBack();
             json_response(['ok' => false, 'message' => 'এই লোকেশনে অল্প সময়ে অনেকগুলো রিপোর্ট হয়েছে।'], 429);
         }
-        $newType = $location['type'] === $type
-            ? $type
-            : 'both';
-
         $useInc = $type === 'use' ? 1 : 0;
         $saleInc = $type === 'sale' ? 1 : 0;
+        $nextUseCount = (int) $location['use_count'] + $useInc;
+        $nextSaleCount = (int) $location['sale_count'] + $saleInc;
+        $newType = $nextUseCount > 0 && $nextSaleCount > 0
+            ? 'both'
+            : ($nextSaleCount > 0 ? 'sale' : 'use');
 
         $update = $pdo->prepare(
             "

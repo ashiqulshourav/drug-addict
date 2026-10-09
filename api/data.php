@@ -12,7 +12,9 @@ $stats = $pdo->query(
        COUNT(DISTINCT location_id) AS total_locations,
        COUNT(DISTINCT CASE WHEN report_type='sale' THEN location_id END) AS sale_locations,
        COUNT(DISTINCT CASE WHEN report_type='use' THEN location_id END) AS use_locations
-     FROM reports"
+    FROM reports r
+    INNER JOIN locations l ON l.id = r.location_id
+    WHERE r.deleted_at IS NULL AND l.deleted_at IS NULL"
 )->fetch();
 
 $stations = $pdo->query(
@@ -24,8 +26,8 @@ $stations = $pdo->query(
        COALESCE(SUM(CASE WHEN r.report_type='use' THEN 1 ELSE 0 END),0) AS use_count
      FROM police_stations ps
      JOIN districts d ON d.id = ps.district_id
-     LEFT JOIN locations l ON l.police_station_id = ps.id
-     LEFT JOIN reports r ON r.location_id = l.id
+    LEFT JOIN locations l ON l.police_station_id = ps.id AND l.deleted_at IS NULL AND l.report_count > 0
+    LEFT JOIN reports r ON r.location_id = l.id AND r.deleted_at IS NULL
      GROUP BY ps.id, ps.name, d.name
      ORDER BY d.name, ps.name"
 )->fetchAll();

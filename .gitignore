@@ -18,6 +18,8 @@ config/*local*.php
 *.sqlite3
 *.sql
 !database.migration.sql
+!database.admin.sql
+!database.admin.migration.sql
 
 # ================================
 # User uploads / runtime files

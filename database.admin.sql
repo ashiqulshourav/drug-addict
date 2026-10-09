@@ -75,9 +75,13 @@ CREATE TABLE IF NOT EXISTS admin_audit_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT IGNORE INTO admin_roles (name, slug, description, is_system) VALUES
-('Super Admin', 'super-admin', 'Full access to the Madok administration panel.', 1),
-('Manager', 'manager', 'Operational management access.', 1),
-('Moderator', 'moderator', 'Moderation and review access.', 1);
+('SUPER ADMIN', 'super-admin', 'Full access to the Madok administration panel.', 1),
+('MANAGER', 'manager', 'Operational management access.', 1),
+('MODERATOR', 'moderator', 'Moderation and review access.', 1);
+
+UPDATE admin_roles SET name = 'SUPER ADMIN' WHERE slug = 'super-admin' AND name <> 'SUPER ADMIN';
+UPDATE admin_roles SET name = 'MANAGER' WHERE slug = 'manager' AND name <> 'MANAGER';
+UPDATE admin_roles SET name = 'MODERATOR' WHERE slug = 'moderator' AND name <> 'MODERATOR';
 
 INSERT IGNORE INTO admin_permissions (name, description) VALUES
 ('dashboard.view', 'View the admin dashboard.'),

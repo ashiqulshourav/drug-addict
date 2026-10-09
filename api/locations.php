@@ -23,7 +23,7 @@ try {
             (
                 SELECT r.description
                 FROM reports r
-                WHERE r.location_id = l.id
+                WHERE r.location_id = l.id AND r.deleted_at IS NULL
                 ORDER BY r.created_at DESC, r.id DESC
                 LIMIT 1
             ) AS latest_description,
@@ -62,6 +62,9 @@ try {
             ON udv.id = ud.division_id
 
         WHERE
+            l.deleted_at IS NULL
+            AND l.report_count > 0
+            AND
             l.latitude IS NOT NULL
             AND l.longitude IS NOT NULL
 

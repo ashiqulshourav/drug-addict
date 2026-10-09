@@ -36,7 +36,9 @@ try {
         LEFT JOIN divisions sdv ON sdv.id = sd.division_id
         LEFT JOIN districts ud ON ud.id = u.district_id
         LEFT JOIN divisions udv ON udv.id = ud.division_id
-        WHERE r.location_id = ?
+                WHERE r.location_id = ?
+                    AND r.deleted_at IS NULL
+                    AND l.deleted_at IS NULL
         ORDER BY r.created_at DESC, r.id DESC"
     );
     $stmt->execute([$locationId]);

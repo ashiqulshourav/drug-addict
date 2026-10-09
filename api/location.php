@@ -33,8 +33,8 @@ try {
         LEFT JOIN districts d ON d.division_id = dv.id
         LEFT JOIN upazilas u ON u.district_id = d.id
         LEFT JOIN police_stations ps ON ps.district_id = d.id
-        LEFT JOIN locations l ON l.upazila_id = u.id OR l.police_station_id = ps.id
-        LEFT JOIN reports r ON r.location_id = l.id
+        LEFT JOIN locations l ON (l.upazila_id = u.id OR l.police_station_id = ps.id) AND l.deleted_at IS NULL AND l.report_count > 0
+        LEFT JOIN reports r ON r.location_id = l.id AND r.deleted_at IS NULL
         WHERE {$where}");
     $stmt->execute($queryParams);
     $stats = $stmt->fetch();
@@ -50,7 +50,7 @@ try {
             (
                 SELECT r.description
                 FROM reports r
-                WHERE r.location_id = l.id
+                WHERE r.location_id = l.id AND r.deleted_at IS NULL
                 ORDER BY r.created_at DESC, r.id DESC
                 LIMIT 1
             ) AS latest_description,
@@ -63,7 +63,7 @@ try {
         LEFT JOIN districts d ON d.id = u.district_id
         LEFT JOIN divisions dv ON dv.id = d.division_id
         LEFT JOIN police_stations ps ON ps.id = l.police_station_id
-        WHERE {$where} AND l.latitude IS NOT NULL AND l.longitude IS NOT NULL
+        WHERE {$where} AND l.deleted_at IS NULL AND l.report_count > 0 AND l.latitude IS NOT NULL AND l.longitude IS NOT NULL
         ORDER BY l.updated_at DESC LIMIT 500");
     $map->execute($queryParams);
     $locations = array_map(static fn(array $row): array => [

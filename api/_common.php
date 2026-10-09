@@ -27,10 +27,14 @@ function start_secure_session(): void
     }
 
     ini_set('session.use_strict_mode', '1');
+    $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    $host = preg_replace('/:\\d+$/', '', $host) ?: $host;
+    $isLocalHost = in_array($host, ['localhost', '127.0.0.1', '0.0.0.0'], true);
+    $isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
     session_set_cookie_params([
         'lifetime' => 0,
         'path' => '/',
-        'secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'secure' => $isHttps || (!$isLocalHost && strtolower((string) env_value('APP_ENV', 'production')) === 'production'),
         'httponly' => true,
         'samesite' => 'Lax',
     ]);
@@ -56,6 +60,55 @@ function verify_csrf(string $token): bool
 {
     start_secure_session();
     return $token !== '' && isset($_SESSION['csrf_token']) && hash_equals((string) $_SESSION['csrf_token'], $token);
+}
+
+function is_admin_api_request(): bool
+{
+    return preg_match('~/api/admin(?:/|$)~', (string) ($_SERVER['SCRIPT_NAME'] ?? '')) === 1;
+}
+
+function admin_cors_origins(): array
+{
+    $configured = trim((string) env_value('ADMIN_CORS_ORIGINS', ''));
+    $origins = $configured === ''
+        ? ['https://adminmadok.devnotation.com']
+        : array_values(array_filter(array_map('trim', explode(',', $configured))));
+
+    if (strtolower((string) env_value('APP_ENV', 'production')) !== 'production') {
+        foreach ([5173, 5174, 5175, 8888, 8889, 8890] as $port) {
+            $origins[] = 'http://localhost:' . $port;
+            $origins[] = 'http://127.0.0.1:' . $port;
+        }
+    }
+
+    return array_values(array_unique($origins));
+}
+
+function configure_admin_cors(): void
+{
+    if (!is_admin_api_request()) {
+        return;
+    }
+
+    $origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
+    $allowed = $origin === '' || in_array($origin, admin_cors_origins(), true);
+    if (!$allowed) {
+        json_response(['ok' => false, 'message' => 'Origin is not allowed.'], 403);
+    }
+
+    if ($origin !== '') {
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Credentials: true');
+        header('Vary: Origin', false);
+    }
+
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+        header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, X-CSRF-Token');
+        header('Access-Control-Max-Age: 600');
+        http_response_code(204);
+        exit;
+    }
 }
 
 function verify_turnstile(string $token, string $expectedAction): bool
@@ -140,12 +193,23 @@ function enforce_request_security(): void
 {
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     $fetchSite = strtolower((string) ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? ''));
+    $origin = (string) ($_SERVER['HTTP_ORIGIN'] ?? '');
+
+    if (is_admin_api_request()) {
+        if ($origin !== '' && !in_array($origin, admin_cors_origins(), true)) {
+            json_response(['ok' => false, 'message' => 'Cross-origin request blocked.'], 403);
+        }
+        if ($fetchSite === 'cross-site' && ($origin === '' || !in_array($origin, admin_cors_origins(), true))) {
+            json_response(['ok' => false, 'message' => 'Cross-origin request blocked.'], 403);
+        }
+        return;
+    }
+
     if ($fetchSite !== '' && !in_array($fetchSite, ['same-origin', 'same-site', 'none'], true)) {
         json_response(['ok' => false, 'message' => 'Cross-origin request blocked.'], 403);
     }
 
     if (in_array($method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)) {
-        $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
         $host = $_SERVER['HTTP_HOST'] ?? '';
         if ($origin !== '' && parse_url($origin, PHP_URL_HOST) !== $host) {
             json_response(['ok' => false, 'message' => 'Cross-origin request blocked.'], 403);
@@ -185,10 +249,14 @@ function enforce_api_rate_limit(): void
 {
     $ip = client_ip();
     if (!rate_limit('global:' . $ip, 120, 60)) {
-        json_response(['ok' => false, 'message' => 'অনেকগুলো অনুরোধ হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।'], 429);
+        $message = is_admin_api_request()
+            ? 'Too many requests. Please try again shortly.'
+            : 'অনেকগুলো অনুরোধ হয়েছে। কিছুক্ষণ পরে আবার চেষ্টা করুন।';
+        json_response(['ok' => false, 'message' => $message], 429);
     }
 }
 
+configure_admin_cors();
 enforce_request_security();
 enforce_api_rate_limit();
 

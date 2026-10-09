@@ -25,7 +25,7 @@ $voterHash = hash('sha256', (string) $_SESSION['voter_id']);
 $pdo = db();
 
 try {
-    $exists = $pdo->prepare('SELECT 1 FROM reports WHERE id = ?');
+    $exists = $pdo->prepare('SELECT 1 FROM reports r INNER JOIN locations l ON l.id = r.location_id WHERE r.id = ? AND r.deleted_at IS NULL AND l.deleted_at IS NULL AND l.report_count > 0');
     $exists->execute([$reportId]);
     if (!$exists->fetchColumn()) {
         json_response(['ok' => false, 'message' => 'Report not found.'], 404);
@@ -43,8 +43,8 @@ try {
     }
 
     $column = $vote === 'yes' ? 'yes_count' : 'no_count';
-    $pdo->exec("UPDATE reports SET {$column} = {$column} + 1 WHERE id = " . (int) $reportId);
-    $counts = $pdo->prepare('SELECT yes_count, no_count FROM reports WHERE id = ?');
+    $pdo->exec("UPDATE reports SET {$column} = {$column} + 1 WHERE id = " . (int) $reportId . " AND deleted_at IS NULL AND EXISTS (SELECT 1 FROM locations l WHERE l.id = reports.location_id AND l.deleted_at IS NULL AND l.report_count > 0)");
+    $counts = $pdo->prepare('SELECT r.yes_count, r.no_count FROM reports r INNER JOIN locations l ON l.id = r.location_id WHERE r.id = ? AND r.deleted_at IS NULL AND l.deleted_at IS NULL AND l.report_count > 0');
     $counts->execute([$reportId]);
     $result = $counts->fetch();
     if (!$result) {

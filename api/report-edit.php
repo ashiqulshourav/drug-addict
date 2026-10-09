@@ -26,7 +26,7 @@ try {
     $stmt = $pdo->prepare(
         'SELECT r.*, l.report_count, l.use_count, l.sale_count
          FROM reports r INNER JOIN locations l ON l.id = r.location_id
-         WHERE r.id = ? FOR UPDATE'
+         WHERE r.id = ? AND r.deleted_at IS NULL AND l.deleted_at IS NULL FOR UPDATE'
     );
     $stmt->execute([$reportId]);
     $report = $stmt->fetch();
@@ -44,8 +44,8 @@ try {
 
         $remaining = $pdo->prepare(
             'SELECT COUNT(*) AS total, SUM(report_type = "use") AS uses, SUM(report_type = "sale") AS sales,
-                    (SELECT title FROM reports WHERE location_id = ? ORDER BY created_at DESC, id DESC LIMIT 1) AS latest_title
-             FROM reports WHERE location_id = ?'
+                          (SELECT title FROM reports WHERE location_id = ? AND deleted_at IS NULL ORDER BY created_at DESC, id DESC LIMIT 1) AS latest_title
+                      FROM reports WHERE location_id = ? AND deleted_at IS NULL'
         );
         $remaining->execute([(int) $report['location_id'], (int) $report['location_id']]);
         $counts = $remaining->fetch() ?: ['total' => 0, 'uses' => 0, 'sales' => 0, 'latest_title' => null];
@@ -54,8 +54,15 @@ try {
             : ((int) $counts['sales'] > 0 ? 'sale' : 'use');
 
         if ((int) $counts['total'] === 0) {
-            $locationDelete = $pdo->prepare('DELETE FROM locations WHERE id = ?');
-            $locationDelete->execute([(int) $report['location_id']]);
+            $deletedReports = $pdo->prepare('SELECT COUNT(*) FROM reports WHERE location_id = ? AND deleted_at IS NOT NULL');
+            $deletedReports->execute([(int) $report['location_id']]);
+            if ((int) $deletedReports->fetchColumn() > 0) {
+                $locationDelete = $pdo->prepare('UPDATE locations SET report_count = 0, use_count = 0, sale_count = 0 WHERE id = ?');
+                $locationDelete->execute([(int) $report['location_id']]);
+            } else {
+                $locationDelete = $pdo->prepare('DELETE FROM locations WHERE id = ?');
+                $locationDelete->execute([(int) $report['location_id']]);
+            }
         } else {
             $locationUpdate = $pdo->prepare(
                 'UPDATE locations SET report_count = ?, use_count = ?, sale_count = ?, type = ?, title = ? WHERE id = ?'

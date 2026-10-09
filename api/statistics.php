@@ -49,7 +49,7 @@ try {
     if ($division !== 'all') {
 
         $divisionWhere = "
-            WHERE dv.slug = ?
+            AND dv.slug = ?
         ";
 
         $params[] = $division;
@@ -103,6 +103,7 @@ try {
         LEFT JOIN divisions dv
             ON dv.id = d.division_id
 
+        WHERE r.deleted_at IS NULL AND l.deleted_at IS NULL
         $divisionWhere
     ";
 
@@ -167,6 +168,7 @@ try {
         LEFT JOIN divisions dv
             ON dv.id = d.division_id
 
+        WHERE l.deleted_at IS NULL AND l.report_count > 0
         $divisionWhere
     ";
 
@@ -249,10 +251,10 @@ try {
             ON dv.id = d.division_id
 
         LEFT JOIN locations l
-            ON l.upazila_id = u.id
+            ON l.upazila_id = u.id AND l.deleted_at IS NULL AND l.report_count > 0
 
         LEFT JOIN reports r
-            ON r.location_id = l.id
+            ON r.location_id = l.id AND r.deleted_at IS NULL
     ";
 
     if ($division !== 'all') {
@@ -372,7 +374,7 @@ try {
             ON dv.id = d.division_id
 
         INNER JOIN locations l
-            ON l.upazila_id = u.id
+            ON l.upazila_id = u.id AND l.deleted_at IS NULL AND l.report_count > 0
     ";
 
     if ($division !== 'all') {
@@ -414,7 +416,7 @@ try {
             (
                 SELECT r.description
                 FROM reports r
-                WHERE r.location_id = l.id
+                WHERE r.location_id = l.id AND r.deleted_at IS NULL
                 ORDER BY r.created_at DESC, r.id DESC
                 LIMIT 1
             ) AS description,
@@ -428,7 +430,8 @@ try {
         LEFT JOIN divisions sdv ON sdv.id = sd.division_id
         LEFT JOIN districts ud ON ud.id = u.district_id
         LEFT JOIN divisions udv ON udv.id = ud.division_id
-        $rankedLocationWhere
+        WHERE l.deleted_at IS NULL AND l.report_count > 0
+        " . ($division !== 'all' ? ' AND COALESCE(udv.slug, sdv.slug) = ?' : '') . "
         ORDER BY %s
         LIMIT %d
     ";
